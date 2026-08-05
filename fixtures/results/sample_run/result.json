@@ -1,0 +1,185 @@
+{
+  "chunk_stats": {
+    "count": 8.0
+  },
+  "config": {
+    "chunker": "paragraph_fixture",
+    "embedder": "fixture",
+    "retriever": "fixture"
+  },
+  "corpus": "sample",
+  "created_at": "2026-01-01T00:00:00",
+  "metrics": {
+    "mrr": 1.0,
+    "ndcg@10": 1.0,
+    "recall@1": 1.0,
+    "recall@5": 1.0
+  },
+  "per_query": [
+    {
+      "excluded": false,
+      "exclusion_reason": null,
+      "first_hit_rank": 1,
+      "gold_chunk_ids": [
+        "64e94b7270712725"
+      ],
+      "latency_ms": 4.2,
+      "metrics": {
+        "recall@5": 1.0
+      },
+      "query": "What is the default page size for list endpoints?",
+      "query_id": "81811d507bd9cdd7",
+      "retrieved_chunk_ids": [
+        "64e94b7270712725"
+      ],
+      "retrieved_scores": [
+        0.9
+      ]
+    },
+    {
+      "excluded": false,
+      "exclusion_reason": null,
+      "first_hit_rank": 1,
+      "gold_chunk_ids": [
+        "f15ad8555666e49e"
+      ],
+      "latency_ms": 4.2,
+      "metrics": {
+        "recall@5": 1.0
+      },
+      "query": "How long is a pagination cursor valid?",
+      "query_id": "3e640afcefe5af99",
+      "retrieved_chunk_ids": [
+        "f15ad8555666e49e"
+      ],
+      "retrieved_scores": [
+        0.9
+      ]
+    },
+    {
+      "excluded": false,
+      "exclusion_reason": null,
+      "first_hit_rank": 1,
+      "gold_chunk_ids": [
+        "18fde04c5ab27013"
+      ],
+      "latency_ms": 4.2,
+      "metrics": {
+        "recall@5": 1.0
+      },
+      "query": "Which fields does a paginated response envelope contain?",
+      "query_id": "57ca311327717505",
+      "retrieved_chunk_ids": [
+        "18fde04c5ab27013"
+      ],
+      "retrieved_scores": [
+        0.9
+      ]
+    },
+    {
+      "excluded": false,
+      "exclusion_reason": null,
+      "first_hit_rank": 1,
+      "gold_chunk_ids": [
+        "8c7db7c85a0e7079"
+      ],
+      "latency_ms": 4.2,
+      "metrics": {
+        "recall@5": 1.0
+      },
+      "query": "How long does an access token remain valid after issuance?",
+      "query_id": "29a9e5ef2e28fa5e",
+      "retrieved_chunk_ids": [
+        "8c7db7c85a0e7079"
+      ],
+      "retrieved_scores": [
+        0.9
+      ]
+    },
+    {
+      "excluded": false,
+      "exclusion_reason": null,
+      "first_hit_rank": 1,
+      "gold_chunk_ids": [
+        "19a2b10d410d5518"
+      ],
+      "latency_ms": 4.2,
+      "metrics": {
+        "recall@5": 1.0
+      },
+      "query": "What is the rate limit on authentication endpoints?",
+      "query_id": "48c2acfb435a6b27",
+      "retrieved_chunk_ids": [
+        "19a2b10d410d5518"
+      ],
+      "retrieved_scores": [
+        0.9
+      ]
+    },
+    {
+      "excluded": false,
+      "exclusion_reason": null,
+      "first_hit_rank": 1,
+      "gold_chunk_ids": [
+        "2684b500555d9cb6"
+      ],
+      "latency_ms": 4.2,
+      "metrics": {
+        "recall@5": 1.0
+      },
+      "query": "What interest rate applies to overdue undisputed amounts?",
+      "query_id": "c0e585dc9cb5bfb0",
+      "retrieved_chunk_ids": [
+        "2684b500555d9cb6"
+      ],
+      "retrieved_scores": [
+        0.9
+      ]
+    },
+    {
+      "excluded": false,
+      "exclusion_reason": null,
+      "first_hit_rank": 1,
+      "gold_chunk_ids": [
+        "cf68596d9493dd65"
+      ],
+      "latency_ms": 4.2,
+      "metrics": {
+        "recall@5": 1.0
+      },
+      "query": "Under what conditions does interest not accrue on an invoice?",
+      "query_id": "3c94045e23fa7511",
+      "retrieved_chunk_ids": [
+        "cf68596d9493dd65"
+      ],
+      "retrieved_scores": [
+        0.9
+      ]
+    },
+    {
+      "excluded": false,
+      "exclusion_reason": null,
+      "first_hit_rank": 1,
+      "gold_chunk_ids": [
+        "7f92ce14e8d5181c"
+      ],
+      "latency_ms": 4.2,
+      "metrics": {
+        "recall@5": 1.0
+      },
+      "query": "Which sections survive termination of the agreement?",
+      "query_id": "277207289f73b130",
+      "retrieved_chunk_ids": [
+        "7f92ce14e8d5181c"
+      ],
+      "retrieved_scores": [
+        0.9
+      ]
+    }
+  ],
+  "run_id": "sample_run",
+  "schema_version": "1.0",
+  "timings": {
+    "total_s": 0.0
+  }
+}

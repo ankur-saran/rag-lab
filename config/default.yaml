@@ -1,0 +1,16 @@
+# Global defaults. Resolution order: --set > --config <file> > this file > code defaults.
+seed: 42
+log_level: info
+json_logs: false
+
+paths:
+  artifacts: artifacts
+  fixtures: fixtures
+  corpora: corpora
+  results: artifacts/results
+
+defaults:
+  chunker: recursive
+  embedder: bge-small
+  retriever: dense
+  k: 10

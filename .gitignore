@@ -1,0 +1,15 @@
+artifacts/
+!artifacts/**/.gitkeep
+.env
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.DS_Store
+rag-lab-implementation-plan.md

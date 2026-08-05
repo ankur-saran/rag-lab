@@ -1,0 +1,58 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "rag-lab"
+version = "0.1.0"
+description = "A framework for showcasing chunking and embedding strategies"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+
+# Base dependencies == the "core" tier. Deliberately light: no torch, no chromadb.
+# Phases 1, 2 and 5 (with --mock-llm) run on this alone.
+dependencies = [
+    "pydantic>=2.5",
+    "typer>=0.12",
+    "pyyaml>=6.0",
+    "structlog>=24.1",
+    "numpy>=1.26",
+    "pandas>=2.1",
+    "rich>=13.7",
+    "tiktoken>=0.7",
+]
+
+[project.optional-dependencies]
+# Alias so the documented `pip install -e ".[core,dev]"` works. Base deps are core.
+core = []
+embed = [
+    "sentence-transformers>=3.0",
+    "chromadb>=0.5",
+    "rank-bm25>=0.2.2",
+]
+agents = ["anthropic>=0.39"]
+app = ["streamlit>=1.38", "plotly>=5.24"]
+dev = ["pytest>=8.0", "ruff>=0.6", "mypy>=1.11"]
+
+[project.scripts]
+rag-lab = "rag_lab.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/rag_lab"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.mypy]
+python_version = "3.10"
+packages = ["rag_lab"]
+ignore_missing_imports = true
