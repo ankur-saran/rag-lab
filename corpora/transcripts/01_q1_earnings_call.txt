@@ -1,0 +1,29 @@
+Solstice Analytics, Inc. Q1 Fiscal 2024 Earnings Call Transcript
+
+Operator: Good afternoon, and welcome to the Solstice Analytics first quarter fiscal 2024 earnings conference call. All participants will be in listen-only mode during the prepared remarks. I will now turn the call over to Priya Chandrasekaran, Chief Executive Officer.
+
+Priya Chandrasekaran, CEO: Thank you, and good afternoon everyone. We're pleased to report another strong quarter. Revenue came in at 84.2 million dollars, up 31 percent year over year, ahead of the high end of our guidance range. Net revenue retention held steady at 118 percent, and we closed the quarter with 1,940 customers paying more than 10,000 dollars annually, up from 1,610 a year ago. I want to spend a moment on the product side before handing off to Marcus for the financial detail.
+
+Priya Chandrasekaran, CEO: Our new anomaly-detection module, which we discussed on the last call, is now generally available and has already been adopted by roughly 15 percent of our enterprise customer base within its first full quarter. Early feedback suggests it's shortening the time customers spend triaging false-positive alerts by more than half in typical deployments, which is exactly the outcome we designed it for.
+
+Marcus Webb, CFO: Thanks, Priya. Turning to the numbers in more detail. Gross margin was 78.4 percent, up about 90 basis points sequentially, driven by continued efficiency gains in our data infrastructure costs. Operating expenses grew 22 percent year over year, slower than revenue growth, which drove operating margin to 9.1 percent, our fourth consecutive quarter of margin expansion. Free cash flow was 11.3 million dollars for the quarter.
+
+Marcus Webb, CFO: On the balance sheet, we ended the quarter with 214 million dollars in cash and short-term investments and no outstanding debt. For guidance, we're raising our full-year revenue outlook to a range of 355 to 360 million dollars, up from our prior range of 345 to 352 million, reflecting both the Q1 outperformance and stronger-than-expected early traction on the anomaly-detection module.
+
+Operator: We'll now open the line for questions. Our first question comes from Daniel Osei at Ferris Capital.
+
+Daniel Osei, Analyst: Thanks for taking the question. Can you talk about what's driving the net revenue retention holding at 118 percent even as the cohort of larger customers matures? Is that mostly expansion within existing modules or new module attach?
+
+Priya Chandrasekaran, CEO: It's really both, but increasingly it's attach. About 40 percent of net expansion this quarter came from customers adding the anomaly-detection module on top of their existing core platform subscription, versus closer to 25 percent a year ago before that module existed. Seat and usage-based expansion within the core platform still makes up the majority, but the mix is shifting toward multi-module attach, which we think is a healthier long-term dynamic because it deepens the relationship beyond a single point of value.
+
+Daniel Osei, Analyst: That's helpful, thank you.
+
+Operator: Our next question comes from Rebecca Lin at Northgate Partners.
+
+Rebecca Lin, Analyst: On the margin expansion, how much more room do you see in gross margin from the infrastructure efficiency work you mentioned, and is any of that reinvested back into the cost of revenue line for the new module?
+
+Marcus Webb, CFO: We think there's another 150 to 250 basis points of gross margin upside over the next four to six quarters as we finish migrating the remaining legacy storage layer, though the anomaly-detection module does carry a somewhat higher cost of revenue today than our core platform because of the additional compute it requires per customer. As that module scales, we'd expect its unit costs to come down and partially offset that mix effect.
+
+Operator: That concludes our question and answer session. I'll turn the call back to Priya for closing remarks.
+
+Priya Chandrasekaran, CEO: Thanks everyone for joining us today. We're pleased with the start to the fiscal year and look forward to updating you again next quarter.

@@ -1,0 +1,28 @@
+Post-Incident Review — Alert Ingestion Delay, October 14th
+Attendees: Wei Zhang (Eng Lead, Detection), Marcus Webb (on-call escalation contact), incident commander Jonas Petersen, two on-call engineers
+
+Jonas Petersen: Let's walk through the timeline first, then get into root cause and follow-ups. At 14:02 UTC, our ingestion latency dashboard crossed the 5-minute alert threshold. Page went out at 14:05. First engineer acknowledged at 14:09. Can someone confirm what we saw first when we started looking?
+
+On-call engineer (Marisol Ibarra): When I picked it up, the ingestion queue depth was climbing steadily, about 40 percent above normal for that time of day. CPU on the ingestion workers looked normal, so my first hypothesis was a downstream consumer slowing down rather than an ingestion-side problem.
+
+Jonas Petersen: And that hypothesis held up?
+
+Marisol Ibarra: It did. We traced it to the suppression-model scoring service, which had started timing out on roughly 12 percent of requests starting around 13:55, seven minutes before the queue depth crossed our alerting threshold. Timeouts were causing ingestion to retry with backoff, which backed up the whole pipeline behind it.
+
+Wei Zhang: The scoring service timeout itself traces back to a deploy we shipped at 13:40 that added a new feature lookup to the suppression model — the seasonality-window widening we talked about in product planning a couple weeks back. That lookup hit a cache that wasn't warmed for about 8 percent of accounts, and cache misses on that particular table are slow, about 400 milliseconds each versus low single-digit milliseconds on a hit.
+
+Jonas Petersen: What was the actual customer impact during the roughly 45 minutes this was live?
+
+Marisol Ibarra: Alert delivery was delayed for affected customers, with a median delay of about 6 minutes and a worst case of 22 minutes for a couple of accounts that had the highest cache-miss rate. No alerts were dropped — everything eventually delivered — but for a monitoring product, a 22-minute delay on a real incident alert is a meaningful miss on our own reliability promise.
+
+Wei Zhang: We rolled back the deploy at 14:31 once we confirmed the correlation, and queue depth was back to baseline by 14:47.
+
+Jonas Petersen: Let's get into action items. First and most obvious — cache warming needs to be part of the deploy process for any change touching that lookup table, not an afterthought. Wei, can your team own that?
+
+Wei Zhang: Yes, we'll add a pre-deploy warming step and a canary check that specifically watches cache hit rate before a rollout is allowed to proceed past 10 percent of traffic.
+
+Jonas Petersen: Second, our alerting threshold caught this reactively at the queue-depth symptom rather than at the scoring-service timeout root cause, seven minutes earlier. Marcus, is there an appetite to add a timeout-rate alert directly on the scoring service?
+
+Marcus Webb: Agreed that's worth doing, and it's a small addition. I'll make sure it's prioritized alongside the cache-warming work rather than getting deprioritized behind feature work.
+
+Jonas Petersen: Good. I'll write up the full postmortem doc and circulate by end of week.

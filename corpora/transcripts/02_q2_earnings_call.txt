@@ -1,0 +1,27 @@
+Solstice Analytics, Inc. Q2 Fiscal 2024 Earnings Call Transcript
+
+Operator: Good afternoon, and welcome to the Solstice Analytics second quarter fiscal 2024 earnings call. I will now turn the call over to Priya Chandrasekaran, Chief Executive Officer.
+
+Priya Chandrasekaran, CEO: Thank you. Q2 revenue was 91.6 million dollars, up 29 percent year over year and slightly ahead of consensus. Customer count in the over-10,000-dollar cohort grew to 2,080, and we added a record 24 new logos with initial contract values above 100,000 dollars, the strongest quarter we've had for large new-logo wins.
+
+Priya Chandrasekaran, CEO: I do want to flag one thing candidly. We saw a modest uptick in churn within our smallest customer tier, those paying under 10,000 dollars annually, concentrated among customers who signed up during the self-serve promotion we ran last spring. We believe this is largely a mismatch between that promotional cohort's usage patterns and our platform's sweet spot, rather than a broader product or competitive issue, but we're watching it closely.
+
+Marcus Webb, CFO: On the financials, gross margin was 78.9 percent, up another 50 basis points sequentially as the infrastructure migration Priya mentioned last quarter continues to progress ahead of schedule. Operating margin reached 10.4 percent. We generated 14.8 million dollars of free cash flow. Full-year guidance moves to 368 to 374 million dollars in revenue, reflecting the Q2 beat and the strong large-logo pipeline we're seeing heading into the back half.
+
+Marcus Webb, CFO: I'll also note we repurchased 8 million dollars of stock during the quarter under the buyback program the board authorized in January, our first repurchase activity since going public.
+
+Operator: We'll now open the line for questions. First question from Daniel Osei at Ferris Capital.
+
+Daniel Osei, Analyst: Can you size the smallest-tier churn you mentioned? Is this a few points of overall net revenue retention or something more contained?
+
+Marcus Webb, CFO: It's contained. That cohort represents low single digits of total revenue, and the elevated churn within it took maybe 1 point off gross retention at the company level, fully offset by expansion elsewhere, which is why net revenue retention still came in at 117 percent, basically flat with last quarter.
+
+Operator: Next question from Aisha Rahman at Component Capital.
+
+Aisha Rahman, Analyst: On the 24 large new logos, is there a particular vertical or use case driving that, or is it broad-based?
+
+Priya Chandrasekaran, CEO: It's fairly broad-based across financial services and e-commerce, our two largest verticals historically, but we did see a meaningful pickup in logistics and supply chain this quarter specifically, which we think is being pulled forward by interest in the anomaly-detection module for inventory and shipment monitoring use cases outside our traditional core.
+
+Operator: That concludes our question and answer session.
+
+Priya Chandrasekaran, CEO: Thank you all. We're proud of the momentum and look forward to speaking with you next quarter.

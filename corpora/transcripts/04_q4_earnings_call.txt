@@ -1,0 +1,27 @@
+Solstice Analytics, Inc. Q4 and Full Year Fiscal 2024 Earnings Call Transcript
+
+Operator: Good afternoon, and welcome to the Solstice Analytics fourth quarter and full year fiscal 2024 earnings call. I will now turn the call over to Priya Chandrasekaran, Chief Executive Officer.
+
+Priya Chandrasekaran, CEO: Thank you. We closed the year with Q4 revenue of 103.4 million dollars, up 24 percent year over year, bringing full-year revenue to 375.9 million dollars, up 27 percent, right at the top of the range we set at the start of the quarter. Net revenue retention finished the year at 116 percent.
+
+Priya Chandrasekaran, CEO: On the Ferrostat integration, the root-cause suggestion feature Marcus previewed last call shipped to general availability in December and is already active for about a third of anomaly-detection module customers. Early data shows customers using it are resolving incidents roughly 35 percent faster on average than those who aren't, which is a very encouraging early signal for a feature that's only been live a few months.
+
+Marcus Webb, CFO: Full-year gross margin was 78.9 percent and full-year operating margin was 10.6 percent, both up meaningfully from the prior fiscal year. Full-year free cash flow was 58.4 million dollars. We ended the year with 248 million dollars in cash and no debt.
+
+Marcus Webb, CFO: Looking ahead to fiscal 2025, we're initiating full-year revenue guidance of 445 to 455 million dollars, representing growth of approximately 18 to 21 percent. That's a further deceleration from this year's 27 percent, which reflects both a larger revenue base and a more conservative starting assumption for the small-customer tier, even though that cohort has stabilized as I mentioned last quarter.
+
+Operator: We'll now take questions. First question from Aisha Rahman at Component Capital.
+
+Aisha Rahman, Analyst: The fiscal 2025 guide implies a pretty significant step-down in growth rate. Is there anything specific driving the conservatism beyond simple law-of-large-numbers dynamics?
+
+Marcus Webb, CFO: It's mostly the law of large numbers, honestly, plus we're being deliberately conservative on how quickly Ferrostat-driven expansion shows up in the numbers given it's still early. If the early resolution-time data Priya mentioned continues to hold up as it scales to the full customer base, there's room for that guide to prove conservative, but we'd rather set a bar we're confident we can clear.
+
+Operator: Next question from Rebecca Lin at Northgate Partners.
+
+Rebecca Lin, Analyst: Any update on international expansion plans for fiscal 2025?
+
+Priya Chandrasekaran, CEO: Yes, we're opening a small go-to-market team in Singapore in the first half of fiscal 2025, our first dedicated presence in Asia-Pacific. It's a modest investment initially, a handful of sales and customer-success hires, but we've had enough inbound interest from the region over the past two years that we think it's the right time to invest directly rather than continuing to serve it remotely from our U.S. and European teams.
+
+Operator: That concludes the call. I'll hand it back to management.
+
+Priya Chandrasekaran, CEO: Thanks everyone for a great year, and we look forward to updating you on our progress next quarter.

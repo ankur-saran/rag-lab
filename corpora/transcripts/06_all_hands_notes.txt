@@ -1,0 +1,16 @@
+All-Hands Meeting Notes — Solstice Analytics
+Presenter: Priya Chandrasekaran, CEO, with department updates from leadership team
+
+Priya Chandrasekaran: Thanks everyone for joining. Quick note before we get into updates — we crossed 500 employees this week, which felt worth pausing on. When I started this company in a co-working space eight years ago I don't think I could have pictured a room this size on the other end of a video call. Okay, let's get into it.
+
+Priya Chandrasekaran: On the business side, Q3 came in at 96.8 million dollars in revenue, up 26 percent year over year. That's a bit slower than the growth rate we posted earlier this year, which is expected and mostly reflects a tougher comparison against last year's numbers rather than anything concerning in the underlying business. Net revenue retention held at 117 percent.
+
+Priya Chandrasekaran: Bigger news is that we closed an acquisition this week. Ferrostat is a 22-person team that's been building automated root-cause analysis technology, and their work is going to plug directly into the anomaly-detection module most of you already know well. Please give them a warm welcome when you see their names in Slack over the next few weeks — onboarding a whole team at once is disorienting, and a little extra patience goes a long way.
+
+Marcus Webb, CFO: Just a quick add from finance — with the acquisition closed, we're going to see a modest step-up in operating expenses starting next quarter as the Ferrostat team's costs come onto our books. That's already reflected in the guidance we gave publicly, so nothing here changes our hiring plan for the rest of the org.
+
+Tomas Nilsson, VP Product: On product, the big news is the false-positive suppression work Wei's team has been heads-down on is targeting general availability early next quarter. Beta results have been strong — alert volume down about a third for participating customers with no meaningful increase in missed real incidents. If you want a deeper look, Wei is doing a product deep-dive session next Thursday.
+
+Elena Popescu, VP People: A few logistics notes. Open enrollment for benefits starts Monday and runs two weeks — watch for the email from People Ops. We're also opening a small go-to-market office in Singapore in the first half of next fiscal year, our first presence in Asia-Pacific, so if anyone's interested in relocating or knows someone in the region for our open roles there, send them my way.
+
+Priya Chandrasekaran: That's it from us today. Thanks as always for the questions in the doc — we'll get through as many as we can in the time left.

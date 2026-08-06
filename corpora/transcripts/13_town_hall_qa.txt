@@ -1,0 +1,24 @@
+Town Hall Q&A Session — Submitted and Live Questions
+Moderator: Elena Popescu, VP People. Panel: Priya Chandrasekaran (CEO), Marcus Webb (CFO), Tomas Nilsson (VP Product)
+
+Elena Popescu: We've got a good mix of submitted and live questions today, so let's get started. First submitted question, anonymous — "Now that we've crossed 500 employees, are we going to keep the same all-hands format, or is leadership thinking about changing how information flows as we grow?"
+
+Priya Chandrasekaran: Honestly, we're already feeling the strain of the current format at this size — it's harder to keep it interactive when the room, even virtually, is this big. We're piloting smaller skip-level group sessions starting next month, roughly 15 people each, rotating through the company over a quarter, in addition to keeping this all-hands for the company-wide updates. The goal is to preserve direct access to leadership even as the broadcast-style meeting gets less interactive by necessity.
+
+Elena Popescu: Next question, also submitted — "With the Ferrostat acquisition, will there be any changes to how we do equity refreshes, given they're joining with their own retention grants?"
+
+Marcus Webb: No changes to the standard refresh program for existing employees. The Ferrostat retention grants are structured specifically for that team's transition and don't change the framework anyone else operates under. If anything, having gone through structuring those grants recently, People Ops and finance used it as a prompt to double check our standard refresh bands are still competitive, and that review is happening independent of the acquisition.
+
+Elena Popescu: Let's take a live question. Go ahead.
+
+Employee (live, name not captured): This is for Tomas — with false-positive suppression and now root-cause suggestions both shipping around the same time, how are you thinking about not overwhelming customers with too much new surface area at once?
+
+Tomas Nilsson: Good question, and it's something we talk about a lot internally. Our approach is sequencing rather than simultaneous launch — suppression is GA first, and we're deliberately holding root-cause suggestions to a slower, cohort-by-cohort rollout rather than flipping it on broadly the same week. We'd rather customers fully absorb one meaningful change before we layer on the next, even if that means our internal roadmap slides look busier than what customers actually experience at any given moment.
+
+Elena Popescu: One more live question before we wrap up.
+
+Employee (live, name not captured): Any update on the Singapore office timeline, and will there be opportunities for existing employees to relocate rather than only new hires?
+
+Priya Chandrasekaran: Timeline is still first half of next fiscal year for opening. And yes, absolutely — we'd love for a couple of existing team members to be part of standing that office up if there's interest, particularly on the customer success side where continuity with existing relationships matters. If you're interested, reach out to Elena's team directly rather than waiting for a formal posting.
+
+Elena Popescu: That's all the time we have today. Thanks everyone, and as always, drop any questions we didn't get to in the doc and we'll follow up in writing.

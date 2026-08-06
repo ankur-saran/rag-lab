@@ -22,7 +22,6 @@ import json
 import re
 import sys
 import tempfile
-import unicodedata
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -36,6 +35,7 @@ from rag_lab.ids import (  # noqa: E402
     split_for,
 )
 from rag_lab.jsonl import write_jsonl  # noqa: E402
+from rag_lab.normalize import normalize_text as normalize  # noqa: E402
 from rag_lab.schemas import Chunk, Document, EvalPair, QueryTrace, RunResult  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -44,16 +44,6 @@ OUT = ROOT / "fixtures"
 
 FIXTURE_CHUNKER = "paragraph_fixture"
 FIXTURE_PARAMS = {"min_chars": 40}
-
-
-def normalize(text: str) -> str:
-    """Normalize BEFORE any offset is computed. Doing it afterwards silently
-    shifts every span by a variable amount."""
-    text = unicodedata.normalize("NFC", text)
-    text = text.replace("\r\n", "\n").replace("\r", "\n")
-    text = "\n".join(line.rstrip() for line in text.split("\n"))
-    text = re.sub(r"\n{3,}", "\n\n", text)
-    return text.strip() + "\n"
 
 
 def build_documents() -> list[Document]:
@@ -284,7 +274,9 @@ def write_all(out: Path) -> dict[str, int]:
     payload = json.loads(run.model_dump_json())
     payload["created_at"] = "2026-01-01T00:00:00"  # pinned, or --check always differs
     (run_dir / "result.json").write_text(
-        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        json.dumps(payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+        newline="\n",  # pin LF; write_text's default translates \n -> os.linesep on Windows
     )
     counts["results"] = 1
     return counts

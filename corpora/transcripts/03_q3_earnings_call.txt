@@ -1,0 +1,27 @@
+Solstice Analytics, Inc. Q3 Fiscal 2024 Earnings Call Transcript
+
+Operator: Welcome to the Solstice Analytics third quarter fiscal 2024 earnings call. I will now turn the call over to Priya Chandrasekaran, Chief Executive Officer.
+
+Priya Chandrasekaran, CEO: Thanks everyone. Q3 revenue was 96.8 million dollars, up 26 percent year over year. Growth decelerated slightly from the 29 and 31 percent we posted the prior two quarters, which we had signaled was likely given the tougher prior-year comparison, and it's tracking in line with our internal plan.
+
+Priya Chandrasekaran, CEO: The bigger story this quarter is on the product side. We're announcing the acquisition of Ferrostat, a 22-person team building automated root-cause analysis for infrastructure incidents. The deal closed on September 3rd for approximately 38 million dollars, primarily in cash. We think their technology accelerates our roadmap for connecting an anomaly-detection alert to a likely root cause by roughly a year versus building it ourselves.
+
+Marcus Webb, CFO: On the financial impact of the acquisition, Ferrostat contributed immaterial revenue this quarter and we expect it to remain revenue-immaterial through the rest of this fiscal year as we integrate the team, though it will add approximately 2 million dollars per quarter of operating expense starting in Q4. Excluding acquisition-related costs, gross margin was 79.1 percent and operating margin was 10.8 percent, both modest sequential improvements.
+
+Marcus Webb, CFO: Free cash flow was 16.1 million dollars. We ended the quarter with 231 million dollars in cash after the acquisition payment. Given the deceleration in the underlying growth rate Priya mentioned, and the near-term expense step-up from Ferrostat, we're setting full-year guidance at 372 to 376 million dollars, effectively narrowing the prior range rather than raising it.
+
+Operator: We'll now take questions. First question from Rebecca Lin at Northgate Partners.
+
+Rebecca Lin, Analyst: On Ferrostat, how should we think about the go-to-market motion? Is this sold as a standalone product or bundled into the existing anomaly-detection module?
+
+Priya Chandrasekaran, CEO: For at least the first two quarters post-close, it won't be independently sold at all. The team is focused entirely on integrating root-cause suggestions directly into the existing anomaly-detection module as a feature, not a separate SKU. We think that's the right sequencing before we consider any standalone packaging.
+
+Operator: Next question from Daniel Osei at Ferris Capital.
+
+Daniel Osei, Analyst: On the growth deceleration, is that entirely comp-driven, or are you seeing anything in the demand environment, particularly among your smaller customers, that's incremental to what you flagged last quarter?
+
+Marcus Webb, CFO: It's primarily comp-driven and consistent with the plan we laid out. We haven't seen incremental softness beyond the small-tier dynamic we discussed last quarter, which has actually stabilized somewhat as that promotional cohort has largely churned through or converted to paid plans that better fit their usage.
+
+Operator: That concludes the question and answer session. I'll turn it back to management for closing remarks.
+
+Priya Chandrasekaran, CEO: Thank you all for joining. We're excited about what the Ferrostat team brings and look forward to sharing more next quarter.

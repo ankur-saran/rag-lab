@@ -1,0 +1,14 @@
+Sales Kickoff — Fiscal 2025 Opening Session
+Speaker: Renata Alvarez, Chief Revenue Officer
+
+Renata Alvarez: Good morning, everyone, and welcome to kickoff. I know a lot of you flew in last night, so I'll try to keep the energy up without keeping you here past lunch. Let's start with the number that matters most to this room — quota. This year's company plan is 445 to 455 million dollars in revenue, which means every one of you is walking out of this week with a bigger number than last year. I want to talk about why we think that's achievable before we get into the how.
+
+Renata Alvarez: Two things are different this year versus last. First, we now have three things to sell instead of one — the core platform, the anomaly-detection module, and starting this quarter, root-cause suggestions layered on top of that, thanks to the Ferrostat team joining us last quarter. That's a real land-and-expand story we didn't have a year ago. Second, we're opening our first Asia-Pacific presence in Singapore this half, which for those of you on the enterprise team means new pipeline in a region we've historically only served remotely.
+
+Renata Alvarez: Let's talk about the anomaly-detection attach motion specifically, since it's going to be the single biggest lever for hitting the number. Reps who led with a module attach conversation in the first meeting, rather than saving it for a later expansion conversation, closed attach deals 40 percent faster on average last year. The lesson is simple — don't wait. Bring it up early, even in a brand-new-logo conversation, because increasingly customers are asking for it before we even bring it up.
+
+Renata Alvarez: On root-cause suggestions specifically, I want to set expectations clearly. It is not yet a standalone product and it is not yet broadly available — it's an early feature attached to anomaly detection, currently live for about a third of that customer base. Do not oversell it in active deals. If a prospect asks, be honest that it's early and rolling out, and loop in product marketing for the latest talking points rather than improvising.
+
+Renata Alvarez: Let's move to the Singapore expansion. We're hiring a small founding team there this half — two account executives and a customer success lead to start. If you have relationships in the region, or candidates in mind, talk to Elena's team this week; we'd rather fill those roles with warm referrals from people who already understand how we sell here than run a fully cold search.
+
+Renata Alvarez: Last thing before we break for the regional breakout sessions — comp plan changes. The core structure is the same as last year, but we've added an explicit accelerator for multi-module deals, meaning a new logo that includes the anomaly-detection module from day one pays out meaningfully better than the same-size deal without it. Full details are in the packet on your seats. Go have a great week.

@@ -3,9 +3,13 @@
 A framework for showcasing chunking and embedding strategies, with an agentic
 optimization layer.
 
-**Status: Phase 0 complete.** The skeleton, artifact schemas, config system, CLI
-surface and health check are in place. Every later phase's subcommands are
-registered and stubbed, so `rag-lab --help` is an accurate map of the system.
+**Status: Phase 1 complete.** The skeleton, artifact schemas, config system, CLI
+surface and health check are in place (Phase 0). Five corpora — `api_docs`,
+`contracts`, `filings`, `transcripts`, `catalog` — are curated and load
+cleanly into normalized `Document` artifacts, with stats showing each
+corpus exhibits the property it was chosen to stress (Phase 1). Every later
+phase's subcommands are registered and stubbed, so `rag-lab --help` is an
+accurate map of the system.
 
 ---
 
@@ -15,6 +19,9 @@ registered and stubbed, so `rag-lab --help` is an accurate map of the system.
 python -m pip install -e ".[core,dev]"   # ~15s, no torch
 rag-lab doctor                           # environment health check
 make verify-phase-0                      # full Phase 0 acceptance run
+rag-lab corpus build --all               # load all 5 corpora -> artifacts/documents/
+rag-lab corpus stats                     # token distribution, headings, code, tables, lang mix
+make verify-phase-1                      # full Phase 1 acceptance run
 ```
 
 `core` is deliberately light — no PyTorch, no ChromaDB. Phases 1, 2 and 5
@@ -42,7 +49,8 @@ plausible-looking, meaningless numbers.
 
 ```
 config/          default.yaml + experiment matrices
-corpora/         raw source documents (Phase 1)
+corpora/         5 curated corpora (Phase 1) — api_docs, contracts, filings,
+                 transcripts, catalog, each with a SOURCE.md
 fixtures/        committed sample artifacts — the independence contract
   raw/           source markdown the fixtures are generated from
 artifacts/       generated output (gitignored)
@@ -53,6 +61,10 @@ src/rag_lab/
   config.py      YAML loading + params_hash (the entire caching strategy)
   paths.py       artifact resolution with fixture fallback
   jsonl.py       strict JSONL read/write
+  normalize.py   the one text-normalization routine (normalize before offsets)
+  markup.py      shared heading/code-block/table detection, fence-masked
+  loaders/       Loader protocol, MarkdownLoader, TextLoader (Phase 1)
+  corpus.py      corpus stats, document lookup, stats rendering (Phase 1)
   doctor.py      environment health check
   cli.py         Typer app, one sub-app per phase
 tests/           one test module per phase
@@ -90,9 +102,13 @@ rag-lab --help                    # every phase, stubs included
 rag-lab doctor                    # environment check
 rag-lab config                    # fully resolved configuration
 rag-lab --set seed=7 config       # override resolution: --set > --config > default.yaml
+rag-lab corpus build --all        # load corpora/<name>/ -> artifacts/documents/<name>.jsonl
+rag-lab corpus build --corpus api_docs
+rag-lab corpus stats              # per-corpus token/heading/code/table/language stats
+rag-lab corpus show --doc-id <id> --chars 500
 ```
 
-Stubs exit 1 and name the phase that will implement them.
+Remaining stubs (Phase 2 onward) exit 1 and name the phase that will implement them.
 
 ## Requirements
 

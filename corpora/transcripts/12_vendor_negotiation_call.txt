@@ -1,0 +1,20 @@
+Vendor Negotiation Call — Cloud Infrastructure Renewal
+Attendees: Marcus Webb (CFO), Deepa Krishnan (Head of Infrastructure), vendor account executive, vendor solutions architect
+
+Deepa Krishnan: Thanks for making time. Before we get into commercial terms, I want to level-set on usage. Our committed spend under the current agreement was 18 million dollars annually, and we came in at about 21.4 million in actual usage last year, mostly driven by the anomaly-detection module's compute footprint growing faster than we forecasted when we signed two years ago.
+
+Vendor account executive (Ryan Castellano): Understood, and that overage is actually a big part of why we wanted to talk about restructuring the deal rather than just doing a standard renewal. What we'd propose is a new three-year commitment at 26 million dollars annually, which gets you a 15 percent effective discount off list versus where your current overage pricing sits, plus it locks in pricing against the compute-heavy instance types the detection module leans on most.
+
+Marcus Webb: Twenty-six feels aggressive as a starting point given we're currently at 21.4. Walk me through how you're getting from our actual usage to that number.
+
+Ryan Castellano: Fair — that number does build in headroom for growth. Given the Ferrostat acquisition and the root-cause feature that's rolling out, our solutions team modeled meaningful additional compute demand over the contract term. But I hear you that we should anchor closer to current usage plus a more conservative growth assumption rather than our more aggressive internal model.
+
+Deepa Krishnan: That's my read too. I'd want to see a proposal closer to 23 to 24 million as the starting commitment, with a contractual mechanism for adding committed spend at a locked-in discount rate if we do grow into it, rather than paying for headroom upfront that may or may not materialize.
+
+Vendor solutions architect (Priya Fernandes): We could structure that as a base commitment with a pre-negotiated expansion tier — so if you cross, say, 24 million in trailing usage, the next 4 million of spend automatically prices at the same 15 percent discount rather than reverting to list. That gets you the growth protection without asking you to commit to capacity you're not certain you'll use.
+
+Marcus Webb: That structure I like a lot better. Ryan, can you get us a revised proposal along those lines — base commitment around 23 to 24 million, with the expansion-tier mechanism Priya just described, by end of week? We'd want to close this before our current agreement's true-up window opens next month.
+
+Ryan Castellano: Yes, I'll have something back to you by Thursday. One other thing worth flagging now rather than later — we're also happy to discuss a reserved-capacity discount specifically for the Reno-adjacent region if data residency ever becomes a consideration for you, given some of what we're hearing from other customers in your space.
+
+Deepa Krishnan: Not a near-term need for us, but good to know it's available if that changes. Let's get the revised base proposal first and go from there.

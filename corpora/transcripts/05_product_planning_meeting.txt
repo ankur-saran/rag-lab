@@ -1,0 +1,24 @@
+Product Planning Meeting — Anomaly Detection Roadmap Review
+Attendees: Priya Chandrasekaran, Tomas Nilsson (VP Product), Wei Zhang (Eng Lead, Detection), Sofia Marchetti (Design Lead)
+
+Tomas Nilsson: Let's start with where the false-positive-reduction work landed. Wei, can you walk through the numbers from the beta cohort?
+
+Wei Zhang: Sure. We ran the new suppression model against 40 beta customers for six weeks. False-positive rate dropped from about 18 percent of alerts to just under 7 percent. Alert volume per customer per day also dropped by roughly a third, which matches what we'd expect if we're correctly filtering noise rather than just hiding real signal.
+
+Tomas Nilsson: Any customers where it went the other direction, where we suppressed something we shouldn't have?
+
+Wei Zhang: Two out of the 40. Both were smaller customers with unusually spiky traffic patterns that the model hadn't seen enough examples of during training. We've already added their traffic patterns to the training set for the next iteration, and we think a general fix — widening the seasonality window the model considers — will help beyond just those two accounts.
+
+Sofia Marchetti: From a design side, we're also proposing a change to how suppressed alerts are surfaced. Right now they just disappear, which made a couple of the beta customers nervous that they were missing something. We want to add a collapsed "suppressed" section in the alert feed so customers can audit what got filtered without it cluttering the main view.
+
+Priya Chandrasekaran: I like that. Trust in the suppression logic is going to matter more than the raw accuracy number if customers can't verify it's working. What's the timeline to GA?
+
+Tomas Nilsson: If the design change is scoped tightly, we think six weeks. Wei, does that match your read on the model work?
+
+Wei Zhang: Model work is basically done. Six weeks is mostly the UI work and a final round of load testing, since suppression runs in the hot path of alert ingestion and we want to be confident it doesn't add meaningful latency at our largest customers' traffic volumes.
+
+Priya Chandrasekaran: Okay, let's target GA for the start of next quarter. Moving on — Tomas, where are we on the root-cause suggestion work with the Ferrostat team?
+
+Tomas Nilsson: Early. They're still ramping on our codebase, but the initial integration plan is to expose their root-cause model as a suggestion attached to an alert, not a separate workflow. First internal demo is scheduled for three weeks from now.
+
+Priya Chandrasekaran: Good, let's regroup after that demo to talk sequencing against the suppression GA.

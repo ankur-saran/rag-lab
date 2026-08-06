@@ -136,13 +136,71 @@ def corpus_build(
     all_: Annotated[bool, typer.Option("--all")] = False,
 ) -> None:
     """Load raw files into artifacts/documents/<corpus>.jsonl."""
-    _not_implemented(1, "corpus build")
+    from rag_lab.jsonl import write_jsonl
+    from rag_lab.loaders import discover_corpora, load_corpus
+    from rag_lab.paths import artifact_path, corpora_dir
+
+    if corpus and all_:
+        console.print("[red]error:[/red] pass --corpus or --all, not both")
+        raise typer.Exit(code=1)
+    if not corpus and not all_:
+        console.print("[red]error:[/red] pass --corpus <name> or --all")
+        raise typer.Exit(code=1)
+
+    available = discover_corpora()
+    if not available:
+        console.print(f"[red]error:[/red] no corpus directories found under {corpora_dir()}")
+        raise typer.Exit(code=1)
+
+    targets = available if all_ else [corpus]
+    unknown = [t for t in targets if t not in available]
+    if unknown:
+        console.print(
+            f"[red]error:[/red] unknown corpus/corpora: {', '.join(unknown)}. "
+            f"available: {', '.join(available)}"
+        )
+        raise typer.Exit(code=1)
+
+    # Per-corpus failures (a bad corpus) are expected/reportable — exit 1, not
+    # the exit-2 traceback path reserved for real bugs.
+    successes: list[tuple[str, int]] = []
+    failures: list[tuple[str, str]] = []
+    for name in targets:
+        try:
+            docs = load_corpus(name, corpora_dir() / name)
+            if not docs:
+                raise ValueError(f"corpus {name!r} produced zero documents")
+            count = write_jsonl(artifact_path("documents", f"{name}.jsonl"), docs)
+            successes.append((name, count))
+        except Exception as exc:
+            failures.append((name, str(exc)))
+
+    for name, count in successes:
+        console.print(f"[green]ok[/green]  {name}: {count} documents")
+    for name, message in failures:
+        console.print(f"[red]fail[/red]  {name}: {message}")
+
+    raise typer.Exit(code=1 if failures else 0)
 
 
 @corpus_app.command("stats")
 def corpus_stats(corpus: Annotated[str | None, typer.Option("--corpus")] = None) -> None:
     """Token distribution, heading density, code blocks, tables, language mix."""
-    _not_implemented(1, "corpus stats")
+    from rag_lab.corpus import compute_corpus_stats, list_documents_by_corpus, render_stats_table
+
+    try:
+        by_corpus = list_documents_by_corpus(corpus)
+    except LookupError as exc:
+        console.print(f"[red]error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    try:
+        stats = [compute_corpus_stats(name, docs) for name, docs in sorted(by_corpus.items())]
+    except Exception as exc:  # e.g. tiktoken's encoding file failing to download offline
+        console.print(f"[red]error:[/red] could not compute stats: {exc}")
+        raise typer.Exit(code=1) from exc
+
+    render_stats_table(stats, console)
 
 
 @corpus_app.command("show")
@@ -151,7 +209,23 @@ def corpus_show(
     chars: Annotated[int, typer.Option("--chars")] = 500,
 ) -> None:
     """Print the head of a document."""
-    _not_implemented(1, "corpus show")
+    from rich.markup import escape
+
+    from rag_lab.corpus import find_document
+
+    doc = find_document(doc_id)
+    if doc is None:
+        console.print(f"[red]error:[/red] no document with doc_id {doc_id!r}")
+        raise typer.Exit(code=1)
+
+    console.print(f"[bold]{escape(doc.title)}[/bold]  ({doc.doc_id})")
+    console.print(
+        f"corpus={escape(doc.corpus)}  content_type={doc.content_type}  "
+        f"source={escape(doc.source_path)}"
+    )
+    console.print(escape(doc.text[:chars]))
+    if len(doc.text) > chars:
+        console.print(f"[dim]... truncated, {len(doc.text) - chars} more characters[/dim]")
 
 
 @chunk_app.command("run")

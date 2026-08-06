@@ -1,0 +1,20 @@
+Customer Advisory Board Call — Notes
+Attendees: Tomas Nilsson (VP Product), Sofia Marchetti (Design Lead), six customer representatives from the advisory board
+
+Tomas Nilsson: Thanks everyone for making time this quarter. We want to spend most of today on the suppressed-alerts UI Sofia's team has been designing, since a couple of you specifically asked for input on that during the beta. Sofia, do you want to share your screen?
+
+Sofia Marchetti: Sure. The core idea is a collapsed section at the bottom of the alert feed showing anything the suppression model filtered out, with a one-line reason for each. You can expand it, and you can flag any suppressed alert as "should not have been suppressed," which feeds directly back into the model's training data.
+
+Grace Okoro, Customer (FinServ vertical): I like the flagging mechanism a lot. My one worry is discoverability — will people actually check that collapsed section regularly, or will it just become something nobody looks at until something goes wrong?
+
+Sofia Marchetti: That's the exact tension we're wrestling with. Current plan is a small badge showing a count of newly suppressed alerts since your last visit, similar to an unread-messages indicator, so there's a lightweight nudge without it being intrusive for people who trust the model and don't want to check it constantly.
+
+Marcus Webb: Just from a lurking-context perspective on the operator side, we did explicitly design the suppression model to be conservative — when it's uncertain, it errs toward not suppressing rather than risking hiding a real issue. So the collapsed section should mostly contain things that are quite confidently noise.
+
+David Kwan, Customer (Logistics vertical): Switching topics slightly — is there any plan to let us set suppression sensitivity per alert category rather than one global setting? We have some categories where we'd rather see everything, even noisy ones, because the cost of a miss is much higher for us.
+
+Tomas Nilsson: That's on the roadmap but not in the initial GA scope, mostly to keep the first release simple to reason about. Per-category tuning is one of the top asks we're tracking for the release after this one, and this conversation is useful ammunition for prioritizing it.
+
+Grace Okoro, Customer: One more thing before we run out of time — any update on SSO support for the new anomaly-detection module specifically? We had to do a workaround to get our security team comfortable rolling it out broadly.
+
+Tomas Nilsson: Good flag, and sorry for the friction. That's a gap — the module currently piggybacks on core-platform SSO but has a couple of permission edge cases that aren't fully wired up yet. I'll get engineering to prioritize closing that gap next sprint and follow up with you directly once it's fixed.

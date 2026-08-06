@@ -1,0 +1,22 @@
+Hiring Committee Debrief — Staff Engineer, Detection Team
+Attendees: Wei Zhang (hiring manager), two panel interviewers, People Ops partner (notetaker)
+
+Wei Zhang: Let's go through feedback for the candidate one round at a time, then land on a decision. I'll start with the systems design round, which I ran. Overall strong signal — the candidate walked through a reasonable approach to scaling the alert-scoring pipeline we described, correctly identified that a naive per-request cache lookup would create a hot-path latency problem at our scale, and proposed a warmed-cache-plus-fallback design that's honestly pretty close to the fix we just shipped after last month's incident.
+
+Panel interviewer (Hana Kobayashi): I ran the coding round. Candidate solved the primary problem quickly and correctly, then handled a follow-up complication — handling out-of-order events in the stream — cleanly once prompted, though didn't spot the edge case unprompted. I'd call that a solid pass, not an exceptional one.
+
+Panel interviewer (Marcus Fielding): I did the behavioral round. A few things stood out. The candidate described a past incident where they'd pushed back on a launch timeline because monitoring coverage wasn't ready, and specifically talked about how they communicated that pushback to a skip-level without it becoming adversarial. Given how much of this role is going to involve exactly that kind of tension between shipping speed and reliability, I thought that was a strong, relevant signal.
+
+Wei Zhang: Any concerns from anyone before we talk leveling?
+
+Hana Kobayashi: My only mild concern is depth on distributed consensus topics — when I pushed on a hypothetical about coordinating state across regions, the answer was reasonable but not deeply expert. Not disqualifying for this role given our current architecture doesn't lean heavily on multi-region consensus, but worth noting if that becomes more central later.
+
+Marcus Fielding: Agreed, and I'd also just flag that we should be thoughtful about start-date timing given the Ferrostat integration work ramping up — might be worth explicitly asking about notice period before we finalize an offer, since we'd ideally want this person ramped before that work peaks.
+
+Wei Zhang: Good point. On leveling, based on the systems design depth and the behavioral signal on judgment under pressure, I'm comfortable with Staff rather than Senior, which is also what the candidate is currently leveled at externally. Any objections?
+
+Hana Kobayashi: No objection, agreed on Staff.
+
+Marcus Fielding: Agreed as well.
+
+Wei Zhang: Great, I'll write up the summary and send to People Ops to start putting together an offer, and I'll separately ask about notice period like Marcus suggested before we lock the number.

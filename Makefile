@@ -1,7 +1,7 @@
 PY ?= python
 PIP ?= $(PY) -m pip
 
-.PHONY: help install fixtures doctor test lint format clean verify-phase-0
+.PHONY: help install fixtures doctor test lint format clean verify-phase-0 verify-phase-1
 
 help:
 	@echo "install         install the package with core + dev extras"
@@ -10,6 +10,7 @@ help:
 	@echo "test            run the test suite"
 	@echo "lint            ruff check"
 	@echo "verify-phase-0  full Phase 0 acceptance run"
+	@echo "verify-phase-1  full Phase 1 acceptance run"
 
 install:
 	$(PIP) install -e ".[core,dev]"
@@ -45,3 +46,21 @@ verify-phase-0:
 	@echo "==> tests"
 	@$(PY) -m pytest tests/test_phase_0.py -q
 	@echo "PHASE 0 OK"
+
+# Phase 1 acceptance: corpora build cleanly, stats show the expected signal,
+# tests pass. Re-checks fixture determinism too, so this target is safe to
+# run in isolation on a clean checkout without verify-phase-0 having run first.
+verify-phase-1:
+	@echo "==> installing (core + dev only)"
+	@$(PIP) install -e ".[core,dev]" -q
+	@echo "==> checking fixture determinism"
+	@$(PY) scripts/build_fixtures.py --check
+	@echo "==> building all corpora"
+	@$(PY) -m rag_lab.cli corpus build --all
+	@echo "==> corpus stats"
+	@$(PY) -m rag_lab.cli corpus stats
+	@echo "==> doctor"
+	@$(PY) -m rag_lab.cli doctor
+	@echo "==> tests"
+	@$(PY) -m pytest tests/test_phase_0.py tests/test_phase_1.py -q
+	@echo "PHASE 1 OK"
