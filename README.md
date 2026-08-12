@@ -3,13 +3,17 @@
 A framework for showcasing chunking and embedding strategies, with an agentic
 optimization layer.
 
-**Status: Phase 1 complete.** The skeleton, artifact schemas, config system, CLI
+**Status: Phase 2 complete.** The skeleton, artifact schemas, config system, CLI
 surface and health check are in place (Phase 0). Five corpora — `api_docs`,
 `contracts`, `filings`, `transcripts`, `catalog` — are curated and load
 cleanly into normalized `Document` artifacts, with stats showing each
-corpus exhibits the property it was chosen to stress (Phase 1). Every later
-phase's subcommands are registered and stubbed, so `rag-lab --help` is an
-accurate map of the system.
+corpus exhibits the property it was chosen to stress (Phase 1). Four baseline
+chunkers — `fixed`, `recursive`, `markdown`, `sentence_window` — turn those
+documents into valid `Chunk` streams, with `chunk stats`/`show`/`diff` to
+inspect what each one did; on `api_docs`, `markdown` never splits a fenced
+code block while `fixed` routinely does (Phase 2). Every later phase's
+subcommands are registered and stubbed, so `rag-lab --help` is an accurate
+map of the system.
 
 ---
 
@@ -22,6 +26,10 @@ make verify-phase-0                      # full Phase 0 acceptance run
 rag-lab corpus build --all               # load all 5 corpora -> artifacts/documents/
 rag-lab corpus stats                     # token distribution, headings, code, tables, lang mix
 make verify-phase-1                      # full Phase 1 acceptance run
+rag-lab chunk run --corpus api_docs --chunker markdown --params max_tokens=128
+rag-lab chunk run --corpus api_docs --chunker fixed --params chunk_tokens=128 --params overlap_tokens=32
+rag-lab chunk diff --a <chunk_set_a> --b <chunk_set_b> --doc-id <id>   # the persuasive one
+make verify-phase-2                      # full Phase 2 acceptance run
 ```
 
 `core` is deliberately light — no PyTorch, no ChromaDB. Phases 1, 2 and 5
@@ -65,6 +73,9 @@ src/rag_lab/
   markup.py      shared heading/code-block/table detection, fence-masked
   loaders/       Loader protocol, MarkdownLoader, TextLoader (Phase 1)
   corpus.py      corpus stats, document lookup, stats rendering (Phase 1)
+  chunkers/      Chunker protocol, finalize_chunks, fixed/recursive/markdown/
+                 sentence_window, name registry (Phase 2)
+  chunks.py      chunk-set stats, lookup, boundary/diff rendering (Phase 2)
   doctor.py      environment health check
   cli.py         Typer app, one sub-app per phase
 tests/           one test module per phase
@@ -106,9 +117,13 @@ rag-lab corpus build --all        # load corpora/<name>/ -> artifacts/documents/
 rag-lab corpus build --corpus api_docs
 rag-lab corpus stats              # per-corpus token/heading/code/table/language stats
 rag-lab corpus show --doc-id <id> --chars 500
+rag-lab chunk run --corpus api_docs --chunker markdown --params max_tokens=512
+rag-lab chunk stats --chunk-set <chunk_set_id>    # split code blocks/tables, orphan rate, ...
+rag-lab chunk show  --chunk-set <id> --doc-id <id>  # boundaries as rules in the terminal
+rag-lab chunk diff  --a <chunk_set_a> --b <chunk_set_b> --doc-id <id>
 ```
 
-Remaining stubs (Phase 2 onward) exit 1 and name the phase that will implement them.
+Remaining stubs (Phase 3 onward) exit 1 and name the phase that will implement them.
 
 ## Requirements
 

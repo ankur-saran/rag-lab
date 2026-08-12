@@ -73,11 +73,54 @@ def count_tables(text: str) -> int:
     return sum(1 for line in masked.split("\n") if _is_table_separator_line(line))
 
 
+def find_tables(text: str) -> list[tuple[int, int]]:
+    """Char spans of GFM pipe tables (header row through the last contiguous
+    pipe-delimited row), used by Phase 2's ``chunk stats`` to tell whether a
+    chunk boundary lands inside a table.
+
+    Row/separator detection runs on ``mask_code_blocks(text)`` so a table-like
+    block inside a fenced example is never matched — the same rule as
+    ``count_tables``. The returned offsets are read off *unmasked* ``text``,
+    not the masked copy: masking blanks fenced lines down to length zero, so
+    it preserves line *count* but not line *length*, and an offset computed
+    against the shortened copy would drift for anything after an earlier
+    fence. A real table can only be found outside a fence, and outside a
+    fence the two copies are character-for-character identical — so line
+    indices found via the masked copy are safe to resolve against the
+    original text's own line offsets.
+    """
+    masked_lines = mask_code_blocks(text).split("\n")
+    orig_lines = text.split("\n")
+
+    is_sep = [_is_table_separator_line(line) for line in masked_lines]
+    is_row = [("|" in line and line.strip() != "") for line in masked_lines]
+
+    line_offsets = [0]
+    for line in orig_lines[:-1]:
+        line_offsets.append(line_offsets[-1] + len(line) + 1)
+
+    spans: list[tuple[int, int]] = []
+    covered: set[int] = set()
+    for i, is_separator_row in enumerate(is_sep):
+        if not is_separator_row or i in covered:
+            continue
+        top = i
+        while top - 1 >= 0 and is_row[top - 1]:
+            top -= 1
+        bottom = i
+        while bottom + 1 < len(masked_lines) and is_row[bottom + 1]:
+            bottom += 1
+        covered.update(range(top, bottom + 1))
+        spans.append((line_offsets[top], line_offsets[bottom] + len(orig_lines[bottom])))
+    return spans
+
+
 __all__ = [
     "ATX_HEADING_RE",
     "CODE_FENCE_RE",
     "count_code_blocks",
     "count_tables",
     "find_headings",
+    "find_tables",
     "mask_code_blocks",
 ]

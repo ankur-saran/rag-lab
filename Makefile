@@ -1,7 +1,7 @@
 PY ?= python
 PIP ?= $(PY) -m pip
 
-.PHONY: help install fixtures doctor test lint format clean verify-phase-0 verify-phase-1
+.PHONY: help install fixtures doctor test lint format clean verify-phase-0 verify-phase-1 verify-phase-2
 
 help:
 	@echo "install         install the package with core + dev extras"
@@ -11,6 +11,7 @@ help:
 	@echo "lint            ruff check"
 	@echo "verify-phase-0  full Phase 0 acceptance run"
 	@echo "verify-phase-1  full Phase 1 acceptance run"
+	@echo "verify-phase-2  full Phase 2 acceptance run"
 
 install:
 	$(PIP) install -e ".[core,dev]"
@@ -64,3 +65,25 @@ verify-phase-1:
 	@echo "==> tests"
 	@$(PY) -m pytest tests/test_phase_0.py tests/test_phase_1.py -q
 	@echo "PHASE 1 OK"
+
+# Phase 2 acceptance: all four chunkers run against fixtures with no prior
+# phase run, api_docs demonstrates the markdown-vs-fixed split-code-block
+# punchline (AC-5) at a chunk size small enough to force it, and tests pass.
+# 128 tokens is deliberately below every api_docs doc's fence size at the
+# default 512 -- see tests/test_phase_2.py for the token-count survey this
+# was chosen from.
+verify-phase-2:
+	@echo "==> installing (core + dev only)"
+	@$(PIP) install -e ".[core,dev]" -q
+	@echo "==> checking fixture determinism"
+	@$(PY) scripts/build_fixtures.py --check
+	@echo "==> building all corpora"
+	@$(PY) -m rag_lab.cli corpus build --all
+	@echo "==> chunking api_docs: fixed vs markdown at a size that forces a fence split"
+	@$(PY) -m rag_lab.cli chunk run --corpus api_docs --chunker fixed --params chunk_tokens=128 --params overlap_tokens=32
+	@$(PY) -m rag_lab.cli chunk run --corpus api_docs --chunker markdown --params max_tokens=128
+	@echo "==> doctor"
+	@$(PY) -m rag_lab.cli doctor
+	@echo "==> tests"
+	@$(PY) -m pytest tests/test_phase_0.py tests/test_phase_1.py tests/test_phase_2.py -q
+	@echo "PHASE 2 OK"

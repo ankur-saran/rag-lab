@@ -21,6 +21,7 @@ dependencies = [
     "pandas>=2.1",
     "rich>=13.7",
     "tiktoken>=0.7",
+    "markdown-it-py>=3.0",
 ]
 
 [project.optional-dependencies]

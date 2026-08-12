@@ -79,9 +79,7 @@ def _not_implemented(phase: int, what: str) -> None:
 @app.callback()
 def main(
     ctx: typer.Context,
-    config: Annotated[
-        str | None, typer.Option("--config", "-c", help="YAML config file.")
-    ] = None,
+    config: Annotated[str | None, typer.Option("--config", "-c", help="YAML config file.")] = None,
     set_: Annotated[
         list[str] | None,
         typer.Option("--set", "-s", help="Override, e.g. --set seed=7 --set defaults.k=5"),
@@ -235,13 +233,64 @@ def chunk_run(
     params: Annotated[list[str] | None, typer.Option("--params")] = None,
 ) -> None:
     """Chunk a corpus into artifacts/chunks/<chunk_set_id>.jsonl."""
-    _not_implemented(2, "chunk run")
+    from rag_lab.chunkers import REGISTRY, run_chunker
+    from rag_lab.corpus import list_documents_by_corpus
+    from rag_lab.jsonl import write_jsonl
+    from rag_lab.paths import artifact_path
+
+    if chunker not in REGISTRY:
+        console.print(
+            f"[red]error:[/red] unknown chunker {chunker!r}. "
+            f"available: {', '.join(sorted(REGISTRY))}"
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        docs = list_documents_by_corpus(corpus)[corpus]
+    except LookupError as exc:
+        console.print(f"[red]error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    overrides = parse_overrides(params)
+    all_chunks = []
+    for doc in docs:
+        all_chunks.extend(run_chunker(chunker, doc, overrides))
+
+    if not all_chunks:
+        console.print(
+            f"[red]error:[/red] chunker {chunker!r} produced zero chunks for corpus {corpus!r}"
+        )
+        raise typer.Exit(code=1)
+
+    chunk_set_id = all_chunks[0].chunk_set_id
+    count = write_jsonl(artifact_path("chunks", f"{chunk_set_id}.jsonl"), all_chunks)
+    console.print(f"[green]ok[/green]  {chunk_set_id}: {count} chunks from {len(docs)} documents")
 
 
 @chunk_app.command("stats")
 def chunk_stats(chunk_set: Annotated[str, typer.Option("--chunk-set")]) -> None:
     """Token distribution, split code blocks, split tables, orphan rate."""
-    _not_implemented(2, "chunk stats")
+    from rag_lab.chunks import (
+        compute_chunk_stats,
+        documents_for_chunks,
+        load_chunk_set,
+        render_chunk_stats_table,
+    )
+
+    try:
+        chunks = load_chunk_set(chunk_set)
+        docs_by_id = documents_for_chunks(chunks)
+    except (LookupError, FileNotFoundError) as exc:
+        console.print(f"[red]error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    try:
+        stats = compute_chunk_stats(chunks, docs_by_id)
+    except Exception as exc:
+        console.print(f"[red]error:[/red] could not compute stats: {exc}")
+        raise typer.Exit(code=1) from exc
+
+    render_chunk_stats_table(stats, console)
 
 
 @chunk_app.command("show")
@@ -249,8 +298,23 @@ def chunk_show(
     chunk_set: Annotated[str, typer.Option("--chunk-set")],
     doc_id: Annotated[str, typer.Option("--doc-id")],
 ) -> None:
-    """Render a document with chunk boundaries."""
-    _not_implemented(2, "chunk show")
+    """Render a document with chunk boundaries as rules in the terminal."""
+    from rag_lab.chunks import (
+        documents_for_chunks,
+        find_document_in,
+        load_chunk_set,
+        render_chunk_boundaries,
+    )
+
+    try:
+        chunks = load_chunk_set(chunk_set)
+        doc = find_document_in(documents_for_chunks(chunks), doc_id)
+    except (LookupError, FileNotFoundError) as exc:
+        console.print(f"[red]error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    doc_chunks = [c for c in chunks if c.doc_id == doc_id]
+    render_chunk_boundaries(doc, doc_chunks, console)
 
 
 @chunk_app.command("diff")
@@ -260,7 +324,27 @@ def chunk_diff(
     doc_id: Annotated[str, typer.Option("--doc-id")],
 ) -> None:
     """Compare two chunk sets' boundaries on the same document, side by side."""
-    _not_implemented(2, "chunk diff")
+    from rag_lab.chunks import (
+        documents_for_chunks,
+        find_document_in,
+        load_chunk_set,
+        render_chunk_diff,
+    )
+
+    try:
+        chunks_a = load_chunk_set(a)
+        chunks_b = load_chunk_set(b)
+        doc = find_document_in(documents_for_chunks(chunks_a), doc_id)
+    except (LookupError, FileNotFoundError) as exc:
+        console.print(f"[red]error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    a_chunks = [c for c in chunks_a if c.doc_id == doc_id]
+    b_chunks = [c for c in chunks_b if c.doc_id == doc_id]
+    if not a_chunks and not b_chunks:
+        console.print(f"[red]error:[/red] doc_id {doc_id!r} has no chunks in either chunk set")
+        raise typer.Exit(code=1)
+    render_chunk_diff(doc, a_chunks, b_chunks, console, a, b)
 
 
 @index_app.command("build")

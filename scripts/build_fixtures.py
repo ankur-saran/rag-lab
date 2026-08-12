@@ -302,8 +302,12 @@ def main() -> int:
         tmp_path = Path(tmp)
         write_all(tmp_path)
         mismatches = []
-        for rel in ("documents/sample.jsonl", "chunks/sample.jsonl", "evalset/sample.jsonl",
-                    "results/sample_run/result.json"):
+        for rel in (
+            "documents/sample.jsonl",
+            "chunks/sample.jsonl",
+            "evalset/sample.jsonl",
+            "results/sample_run/result.json",
+        ):
             committed, regenerated = OUT / rel, tmp_path / rel
             if not committed.exists():
                 mismatches.append(f"{rel}: missing (run `make fixtures`)")
