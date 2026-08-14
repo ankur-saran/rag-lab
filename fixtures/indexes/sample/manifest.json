@@ -1,0 +1,15 @@
+{
+  "index_id": "sample__hash-fixture__d84904a3",
+  "chunk_set_id": "sample",
+  "embedder": "hash-fixture",
+  "embedder_params": {
+    "query_prefix": "query: ",
+    "doc_prefix": "passage: "
+  },
+  "vector_count": 19,
+  "dim": 32,
+  "build_duration_s": 1.5,
+  "library_versions": {},
+  "schema_version": "1.0",
+  "created_at": "2026-08-13T03:14:06.394661"
+}

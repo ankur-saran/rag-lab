@@ -35,7 +35,12 @@ FIXTURE_FALLBACK = {
     "chunks": "chunks/sample.jsonl",
     "evalset": "evalset/sample.jsonl",
     "results": "results/sample_run",
+    "indexes": "indexes/sample",
 }
+
+# Kinds that are a directory (with a manifest.json marking completeness)
+# rather than a single .jsonl file.
+DIRECTORY_KINDS = frozenset({"indexes", "results"})
 
 
 class ArtifactNotFoundError(FileNotFoundError):
@@ -68,6 +73,18 @@ def fixture_path(kind: str) -> Path:
     return fixtures_dir() / rel
 
 
+def _artifact_ready(kind: str, path: Path) -> bool:
+    """Whether ``path`` is a complete artifact, not just a stale/partial dir.
+
+    Indexes are a directory (Chroma persist dir + manifest.json); a build that
+    died mid-write can leave the directory present but incomplete, so
+    completeness is judged by the manifest rather than raw existence.
+    """
+    if kind == "indexes":
+        return (path / "manifest.json").exists()
+    return path.exists()
+
+
 def resolve_artifact(
     kind: str,
     artifact_id: str | None = None,
@@ -87,10 +104,10 @@ def resolve_artifact(
     """
     if artifact_id:
         name = artifact_id
-        if kind != "results" and not name.endswith(".jsonl"):
+        if kind not in DIRECTORY_KINDS and not name.endswith(".jsonl"):
             name = f"{name}.jsonl"
         candidate = artifact_path(kind, name)
-        if candidate.exists():
+        if _artifact_ready(kind, candidate):
             return candidate
         if not allow_fixture:
             raise ArtifactNotFoundError(f"{kind} artifact not found: {candidate}")
@@ -106,7 +123,7 @@ def resolve_artifact(
         raise ArtifactNotFoundError(f"no {kind} artifact id given and fixtures disabled")
 
     fallback = fixture_path(kind)
-    if not fallback.exists():
+    if not _artifact_ready(kind, fallback):
         raise ArtifactNotFoundError(
             f"neither artifact nor fixture available for {kind!r} "
             f"(expected fixture at {fallback}); run `make fixtures`"
@@ -135,6 +152,7 @@ def is_fixture(path: Path) -> bool:
 
 __all__ = [
     "ARTIFACT_KINDS",
+    "DIRECTORY_KINDS",
     "ArtifactNotFoundError",
     "artifact_path",
     "artifacts_dir",

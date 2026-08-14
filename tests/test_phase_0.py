@@ -88,13 +88,13 @@ def test_help_lists_every_phase_subcommand(name):  # AC-2
 
 
 def test_stubs_exit_with_code_one_and_name_their_phase():  # AC-2
-    # `chunk run` was Phase 2's example when this test was written; Phase 2 has
-    # since implemented it, so this now exercises the next real stub instead —
-    # `index build` (Phase 3). The point of the test is unchanged: an
-    # unimplemented phase command exits 1 and names its phase.
-    result = runner.invoke(app, ["index", "build", "--chunk-set", "x"])
+    # `chunk run` was Phase 2's example, then `index build` was Phase 3's --
+    # both have since been implemented, so this now exercises the next real
+    # stub instead: `retrieve query` (Phase 4). The point of the test is
+    # unchanged: an unimplemented phase command exits 1 and names its phase.
+    result = runner.invoke(app, ["retrieve", "query", "--index-id", "x", "--query", "y"])
     assert result.exit_code == 1
-    assert "Phase 3" in result.output
+    assert "Phase 4" in result.output
 
 
 def test_version_command():

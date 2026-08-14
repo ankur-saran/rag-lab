@@ -351,15 +351,48 @@ def chunk_diff(
 def index_build(
     chunk_set: Annotated[str, typer.Option("--chunk-set")],
     embedder: Annotated[str, typer.Option("--embedder")] = "bge-small",
+    truncate_dim: Annotated[int | None, typer.Option("--truncate-dim")] = None,
+    params: Annotated[list[str] | None, typer.Option("--params")] = None,
+    force: Annotated[bool, typer.Option("--force")] = False,
 ) -> None:
     """Embed a chunk set and persist a vector index."""
-    _not_implemented(3, "index build")
+    from rag_lab.embedders import available_embedders
+    from rag_lab.indexing import build_index
+
+    if embedder not in available_embedders():
+        console.print(
+            f"[red]error:[/red] unknown embedder {embedder!r}. "
+            f"available: {', '.join(available_embedders())}"
+        )
+        raise typer.Exit(code=1)
+
+    overrides = parse_overrides(params)
+    if truncate_dim is not None:
+        overrides["truncate_dim"] = truncate_dim
+
+    try:
+        manifest, cache_hit = build_index(chunk_set, embedder, overrides, force=force)
+    except (LookupError, FileNotFoundError, ValueError) as exc:
+        console.print(f"[red]error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    status = "cache hit" if cache_hit else "built"
+    console.print(
+        f"[green]ok[/green]  {manifest.index_id}: {manifest.vector_count} vectors, "
+        f"dim={manifest.dim} ({status})"
+    )
 
 
 @index_app.command("list")
 def index_list() -> None:
     """List built indexes and their manifests."""
-    _not_implemented(3, "index list")
+    from rag_lab.indexing import list_manifests, render_index_list_table
+
+    manifests = list_manifests()
+    if not manifests:
+        console.print("[yellow]no indexes built yet[/yellow] — run `rag-lab index build`")
+        raise typer.Exit(code=0)
+    render_index_list_table(manifests, console)
 
 
 @index_app.command("search")
@@ -369,7 +402,18 @@ def index_search(
     k: Annotated[int, typer.Option("--k")] = 5,
 ) -> None:
     """Ad-hoc semantic search against an index."""
-    _not_implemented(3, "index search")
+    from rag_lab.indexing import render_search_results, search_index
+
+    try:
+        _manifest, results = search_index(index_id, query, k)
+    except (LookupError, FileNotFoundError, ValueError) as exc:
+        console.print(f"[red]error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    if not results:
+        console.print("[yellow]no results[/yellow]")
+        raise typer.Exit(code=0)
+    render_search_results(query, results, console)
 
 
 @retrieve_app.command("query")

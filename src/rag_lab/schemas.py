@@ -98,6 +98,33 @@ class Chunk(_Base):
 
 
 # --------------------------------------------------------------------------- #
+# Phase 3
+# --------------------------------------------------------------------------- #
+
+
+class IndexManifest(_Base):
+    """Metadata written alongside every persisted index. Output of Phase 3.
+
+    One JSON object per index directory (``artifacts/indexes/<index_id>/manifest.json``),
+    not a JSONL collection — same shape as ``RunResult`` in that respect, so it is
+    deliberately not registered in ``ARTIFACT_MODELS``. Phase 6 reads this for
+    reproducibility metadata; ``index build``'s caching also reads it to decide
+    whether a rebuild is needed.
+    """
+
+    index_id: str
+    chunk_set_id: str
+    embedder: str
+    embedder_params: dict[str, Any] = Field(default_factory=dict)
+    vector_count: int
+    dim: int  # actual stored dim, post-truncation
+    build_duration_s: float
+    library_versions: dict[str, str] = Field(default_factory=dict)
+    schema_version: str = SCHEMA_VERSION
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# --------------------------------------------------------------------------- #
 # Phase 5
 # --------------------------------------------------------------------------- #
 
@@ -198,6 +225,7 @@ __all__ = [
     "Difficulty",
     "Document",
     "EvalPair",
+    "IndexManifest",
     "QueryTrace",
     "RunResult",
     "ScoredChunk",

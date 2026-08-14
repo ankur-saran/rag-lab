@@ -28,9 +28,11 @@ MIN_PYTHON = (3, 10)
 MIN_FREE_GB = 2.0
 
 # Approximate on-disk size of each model's weights, for the download warning.
+# Keys match embedders.registry.NAMED_EMBEDDERS' model_name values.
 MODEL_SIZES_MB = {
     "BAAI/bge-small-en-v1.5": 133,
     "sentence-transformers/all-MiniLM-L6-v2": 91,
+    "intfloat/e5-base-v2": 438,
     "intfloat/multilingual-e5-base": 1110,
 }
 DEFAULT_MODEL = "BAAI/bge-small-en-v1.5"
@@ -145,7 +147,9 @@ def run_checks() -> list[Check]:
 
     # Fixtures
     missing_fixtures = [
-        kind for kind in ("documents", "chunks", "evalset") if not fixture_path(kind).exists()
+        kind
+        for kind in ("documents", "chunks", "evalset", "indexes")
+        if not fixture_path(kind).exists()
     ]
     checks.append(
         Check(

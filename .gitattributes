@@ -1,0 +1,5 @@
+# fixtures/indexes/sample/ is a committed Chroma persistent directory (sqlite
+# + HNSW binary segments). core.autocrlf is on for this repo, which would
+# otherwise "normalize" line endings inside these binary files and corrupt
+# them on checkout.
+fixtures/indexes/** -text
