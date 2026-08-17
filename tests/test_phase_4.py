@@ -110,7 +110,9 @@ def _chunk(
     )
 
 
-def _scored(chunk_id: str, *, rank: int, score: float = 0.0, retriever: str = "fake", **kw) -> ScoredChunk:
+def _scored(
+    chunk_id: str, *, rank: int, score: float = 0.0, retriever: str = "fake", **kw
+) -> ScoredChunk:
     return ScoredChunk(chunk=_chunk(chunk_id, **kw), score=score, rank=rank, retriever=retriever)
 
 
@@ -194,14 +196,20 @@ class TestFindParent:
 
     def test_picks_the_containing_parent(self):
         child = _chunk("c", char_start=10, char_end=30)  # midpoint 20
-        parents = [_chunk("p1", char_start=0, char_end=100), _chunk("p2", char_start=200, char_end=300)]
+        parents = [
+            _chunk("p1", char_start=0, char_end=100),
+            _chunk("p2", char_start=200, char_end=300),
+        ]
         assert find_parent(child, parents).chunk_id == "p1"
 
     def test_boundary_straddling_child_resolves_by_midpoint(self):
         # span [60, 140) straddles the 0-100/100-200 boundary; midpoint 100
         # falls in the *second* parent ([100, 200), start inclusive).
         child = _chunk("c", char_start=60, char_end=140)
-        parents = [_chunk("p1", char_start=0, char_end=100), _chunk("p2", char_start=100, char_end=200)]
+        parents = [
+            _chunk("p1", char_start=0, char_end=100),
+            _chunk("p2", char_start=100, char_end=200),
+        ]
         assert find_parent(child, parents).chunk_id == "p2"
 
     def test_ties_broken_by_smallest_span_then_earliest_start(self):
@@ -252,7 +260,9 @@ class TestAssignParents:
 
     def test_round_trip_over_the_committed_fixture_pair_has_zero_orphans(self):
         parents, committed_children = _fixture_parent_child_pair()
-        resolved = assign_parents(_fixture_chunks(), parents)  # sample.jsonl: same spans as sample_child.jsonl
+        resolved = assign_parents(
+            _fixture_chunks(), parents
+        )  # sample.jsonl: same spans as sample_child.jsonl
         assert len(resolved) == len(committed_children)
         assert {(c.chunk_id, c.parent_id) for c in resolved} == {
             (c.chunk_id, c.parent_id) for c in committed_children
@@ -312,7 +322,9 @@ class TestParentDocumentRetrieverDedup:
 
     def test_empty_base_results_return_empty_not_an_error(self):
         parents, _ = _fixture_parent_child_pair()
-        assert ParentDocumentRetriever(FakeRetriever([]), parents, fanout=1).retrieve("q", k=5) == []
+        assert (
+            ParentDocumentRetriever(FakeRetriever([]), parents, fanout=1).retrieve("q", k=5) == []
+        )
 
     def test_rejects_empty_parent_chunks(self):
         with pytest.raises(ValueError):
@@ -332,7 +344,10 @@ class TestSentenceWindowDedup:
             ]
         )
         results = SentenceWindowRetriever(base, overlap_threshold=0.5, fanout=1).retrieve("q", k=5)
-        assert [r.chunk.chunk_id for r in results] == ["a", "c"]  # b suppressed, a (better rank) kept
+        assert [r.chunk.chunk_id for r in results] == [
+            "a",
+            "c",
+        ]  # b suppressed, a (better rank) kept
 
     def test_exactly_fifty_percent_overlap_is_kept(self):
         a = _chunk("a", char_start=0, char_end=100, doc_id="d")
@@ -415,7 +430,16 @@ def test_cli_retrieve_query_rejects_unknown_retriever():
 def test_cli_retrieve_compare_rejects_unknown_retriever():
     result = runner.invoke(
         app,
-        ["retrieve", "compare", "--index-id", "whatever", "--query", "q", "--retrievers", "dense,nope"],
+        [
+            "retrieve",
+            "compare",
+            "--index-id",
+            "whatever",
+            "--query",
+            "q",
+            "--retrievers",
+            "dense,nope",
+        ],
     )
     assert result.exit_code == 1
     assert "unknown retriever" in result.output.lower()
@@ -423,7 +447,17 @@ def test_cli_retrieve_compare_rejects_unknown_retriever():
 
 def test_cli_retrieve_query_parent_doc_without_parent_chunk_set_is_rejected():
     result = runner.invoke(
-        app, ["retrieve", "query", "--index-id", "whatever", "--query", "q", "--retriever", "parent_doc"]
+        app,
+        [
+            "retrieve",
+            "query",
+            "--index-id",
+            "whatever",
+            "--query",
+            "q",
+            "--retriever",
+            "parent_doc",
+        ],
     )
     assert result.exit_code == 1
     assert "--parent-chunk-set" in result.output
@@ -433,8 +467,14 @@ def test_cli_retrieve_compare_parent_doc_without_parent_chunk_set_is_rejected():
     result = runner.invoke(
         app,
         [
-            "retrieve", "compare", "--index-id", "whatever", "--query", "q",
-            "--retrievers", "dense,parent_doc",
+            "retrieve",
+            "compare",
+            "--index-id",
+            "whatever",
+            "--query",
+            "q",
+            "--retrievers",
+            "dense,parent_doc",
         ],
     )
     assert result.exit_code == 1
@@ -443,7 +483,8 @@ def test_cli_retrieve_compare_parent_doc_without_parent_chunk_set_is_rejected():
 
 def test_cli_chunk_run_rejects_invalid_role():
     result = runner.invoke(
-        app, ["chunk", "run", "--corpus", "api_docs", "--chunker", "recursive", "--role", "grandparent"]
+        app,
+        ["chunk", "run", "--corpus", "api_docs", "--chunker", "recursive", "--role", "grandparent"],
     )
     assert result.exit_code == 1
     assert "--role" in result.output
@@ -461,8 +502,14 @@ def test_cli_chunk_run_parent_chunk_set_without_role_child_is_rejected():
     result = runner.invoke(
         app,
         [
-            "chunk", "run", "--corpus", "api_docs", "--chunker", "recursive",
-            "--parent-chunk-set", "whatever",
+            "chunk",
+            "run",
+            "--corpus",
+            "api_docs",
+            "--chunker",
+            "recursive",
+            "--parent-chunk-set",
+            "whatever",
         ],
     )
     assert result.exit_code == 1
@@ -473,8 +520,16 @@ def test_cli_chunk_run_role_parent_then_child_round_trip():
     parent_result = runner.invoke(
         app,
         [
-            "chunk", "run", "--corpus", "api_docs", "--chunker", "markdown",
-            "--params", "max_tokens=2048", "--role", "parent",
+            "chunk",
+            "run",
+            "--corpus",
+            "api_docs",
+            "--chunker",
+            "markdown",
+            "--params",
+            "max_tokens=2048",
+            "--role",
+            "parent",
         ],
     )
     assert parent_result.exit_code == 0, parent_result.output
@@ -483,8 +538,18 @@ def test_cli_chunk_run_role_parent_then_child_round_trip():
     child_result = runner.invoke(
         app,
         [
-            "chunk", "run", "--corpus", "api_docs", "--chunker", "recursive",
-            "--params", "chunk_tokens=256", "--role", "child", "--parent-chunk-set", parent_id,
+            "chunk",
+            "run",
+            "--corpus",
+            "api_docs",
+            "--chunker",
+            "recursive",
+            "--params",
+            "chunk_tokens=256",
+            "--role",
+            "child",
+            "--parent-chunk-set",
+            parent_id,
         ],
     )
     assert child_result.exit_code == 0, child_result.output
@@ -501,13 +566,31 @@ def test_cli_chunk_run_role_and_standalone_get_different_chunk_set_ids():
     # Same corpus/chunker/params, only --role differs -- must not collide
     # (chunkers/hierarchy.py's docstring / plan §4.7 correction).
     standalone = runner.invoke(
-        app, ["chunk", "run", "--corpus", "api_docs", "--chunker", "markdown", "--params", "max_tokens=999"]
+        app,
+        [
+            "chunk",
+            "run",
+            "--corpus",
+            "api_docs",
+            "--chunker",
+            "markdown",
+            "--params",
+            "max_tokens=999",
+        ],
     )
     parent = runner.invoke(
         app,
         [
-            "chunk", "run", "--corpus", "api_docs", "--chunker", "markdown",
-            "--params", "max_tokens=999", "--role", "parent",
+            "chunk",
+            "run",
+            "--corpus",
+            "api_docs",
+            "--chunker",
+            "markdown",
+            "--params",
+            "max_tokens=999",
+            "--role",
+            "parent",
         ],
     )
     assert standalone.exit_code == 0, standalone.output
@@ -562,7 +645,10 @@ def test_parent_doc_against_the_fixture_index_fails_with_a_clear_error_not_a_cra
     # role="child" chunk set was ever built against it.
     with pytest.raises(ValueError, match="parent_id"):
         retrieval.run_retriever(
-            "sample", "parent_doc", "pagination cursor", k=3,
+            "sample",
+            "parent_doc",
+            "pagination cursor",
+            k=3,
             overrides={"parent_chunk_set_id": "sample"},
         )
 
@@ -607,8 +693,14 @@ def test_cli_retrieve_query_and_compare_smoke(fast_embedder):
     query_result = runner.invoke(
         app,
         [
-            "retrieve", "query", "--index-id", index_id, "--query", "pagination cursor",
-            "--retriever", "hybrid",
+            "retrieve",
+            "query",
+            "--index-id",
+            index_id,
+            "--query",
+            "pagination cursor",
+            "--retriever",
+            "hybrid",
         ],
     )
     assert query_result.exit_code == 0, query_result.output
@@ -616,8 +708,14 @@ def test_cli_retrieve_query_and_compare_smoke(fast_embedder):
     compare_result = runner.invoke(
         app,
         [
-            "retrieve", "compare", "--index-id", index_id, "--query", "pagination cursor",
-            "--retrievers", "dense,bm25,hybrid",
+            "retrieve",
+            "compare",
+            "--index-id",
+            index_id,
+            "--query",
+            "pagination cursor",
+            "--retrievers",
+            "dense,bm25,hybrid",
         ],
     )
     assert compare_result.exit_code == 0, compare_result.output
@@ -637,8 +735,16 @@ def test_cli_retrieve_compare_params_are_namespaced_per_retriever(fast_embedder)
     result = runner.invoke(
         app,
         [
-            "retrieve", "compare", "--index-id", index_id, "--query", "pagination cursor",
-            "--retrievers", "hybrid", "--params", "hybrid.k_rrf=5",
+            "retrieve",
+            "compare",
+            "--index-id",
+            index_id,
+            "--query",
+            "pagination cursor",
+            "--retrievers",
+            "hybrid",
+            "--params",
+            "hybrid.k_rrf=5",
         ],
     )
     assert result.exit_code == 0, result.output
@@ -659,8 +765,14 @@ def test_cli_retrieve_query_and_compare_work_with_no_prior_phase(monkeypatch, tm
     query_result = runner.invoke(
         app,
         [
-            "retrieve", "query", "--index-id", "not-real", "--query", "pagination cursor",
-            "--retriever", "hybrid",
+            "retrieve",
+            "query",
+            "--index-id",
+            "not-real",
+            "--query",
+            "pagination cursor",
+            "--retriever",
+            "hybrid",
         ],
     )
     assert query_result.exit_code == 0, query_result.output
@@ -668,8 +780,14 @@ def test_cli_retrieve_query_and_compare_work_with_no_prior_phase(monkeypatch, tm
     compare_result = runner.invoke(
         app,
         [
-            "retrieve", "compare", "--index-id", "not-real", "--query", "pagination cursor",
-            "--retrievers", "dense,bm25,hybrid,sentence_window",
+            "retrieve",
+            "compare",
+            "--index-id",
+            "not-real",
+            "--query",
+            "pagination cursor",
+            "--retrievers",
+            "dense,bm25,hybrid,sentence_window",
         ],
     )
     assert compare_result.exit_code == 0, compare_result.output
@@ -710,7 +828,9 @@ def real_api_docs_recursive_index():
     return manifest
 
 
-def _rank_of_chunk_containing(manifest, chunks, identifier: str, query: str, retriever_name: str) -> int:
+def _rank_of_chunk_containing(
+    manifest, chunks, identifier: str, query: str, retriever_name: str
+) -> int:
     target = next((c for c in chunks if identifier in c.text), None)
     assert target is not None, f"no chunk in {manifest.chunk_set_id} contains {identifier!r}"
     _m, results = retrieval.run_retriever(manifest.index_id, retriever_name, query, k=len(chunks))
@@ -722,7 +842,9 @@ def _rank_of_chunk_containing(manifest, chunks, identifier: str, query: str, ret
 @requires_sentence_transformers
 @requires_chromadb
 @requires_rank_bm25
-def test_ac4_bm25_ranks_the_identifier_chunk_higher_than_dense(real_api_docs_recursive_index):  # AC-4
+def test_ac4_bm25_ranks_the_identifier_chunk_higher_than_dense(
+    real_api_docs_recursive_index,
+):  # AC-4
     """Plan AC-4 is existential ("for an exact-identifier query...") --
     IDEMPOTENCY_KEY_CONFLICT is the demonstrative query (also the Makefile's
     verify-phase-4 choice), so this is the hard, single-query assertion."""
@@ -739,7 +861,9 @@ def test_ac4_bm25_ranks_the_identifier_chunk_higher_than_dense(real_api_docs_rec
 @requires_chromadb
 @requires_rank_bm25
 @pytest.mark.parametrize("identifier, query", API_DOCS_IDENTIFIER_QUERIES)
-def test_bm25_is_never_worse_than_dense_on_identifier_queries(real_api_docs_recursive_index, identifier, query):
+def test_bm25_is_never_worse_than_dense_on_identifier_queries(
+    real_api_docs_recursive_index, identifier, query
+):
     """A softer, non-flaky companion to AC-4 across more identifiers: real
     embeddings don't cooperate identically for every identifier (the plan's
     own "if this doesn't reproduce" caveat), so this only requires BM25 to
@@ -775,7 +899,8 @@ def test_hierarchical_parent_doc_retrieval_end_to_end():
     for doc in docs:
         raw_children.extend(
             run_chunker(
-                "recursive", doc,
+                "recursive",
+                doc,
                 {"chunk_tokens": 256, "role": "child", "parent_chunk_set_id": parent_set_id},
             )
         )
@@ -786,8 +911,10 @@ def test_hierarchical_parent_doc_retrieval_end_to_end():
     manifest, _ = indexing.build_index(child_set_id, "bge-small", {})
 
     _m, results = retrieval.run_retriever(
-        manifest.index_id, "parent_doc",
-        "What does the error code IDEMPOTENCY_KEY_CONFLICT mean?", k=3,
+        manifest.index_id,
+        "parent_doc",
+        "What does the error code IDEMPOTENCY_KEY_CONFLICT mean?",
+        k=3,
         overrides={"parent_chunk_set_id": parent_set_id},
     )
     assert results

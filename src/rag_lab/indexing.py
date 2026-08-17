@@ -139,9 +139,7 @@ def load_manifest_and_store(index_id: str) -> tuple[IndexManifest, ChromaStore]:
     return load_manifest(index_dir), ChromaStore(index_dir)
 
 
-def search_index(
-    index_id: str, query: str, k: int = 5
-) -> tuple[IndexManifest, list[ScoredChunk]]:
+def search_index(index_id: str, query: str, k: int = 5) -> tuple[IndexManifest, list[ScoredChunk]]:
     manifest, store = load_manifest_and_store(index_id)
     embedder = embedder_for(manifest.embedder, manifest.embedder_params)
     vector = embedder.embed_query(query)

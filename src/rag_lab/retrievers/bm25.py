@@ -53,9 +53,7 @@ def _build_bm25(chunks: list[Chunk], *, k1: float, b: float):
     return BM25Okapi(corpus, k1=k1, b=b)
 
 
-def _load_or_build(
-    chunk_set_id: str, index_dir: Path, chunks: list[Chunk], *, k1: float, b: float
-):
+def _load_or_build(chunk_set_id: str, index_dir: Path, chunks: list[Chunk], *, k1: float, b: float):
     """Return a ``(bm25, chunk_ids)`` pair whose order matches the BM25 corpus.
 
     ``chunk_ids`` is persisted alongside the model so a stored pickle can be
@@ -109,7 +107,9 @@ class BM25Retriever:
 
     def retrieve(self, query: str, k: int) -> list[ScoredChunk]:
         scores = self._bm25.get_scores(_tokenize(query))
-        ranked = sorted(zip(self._chunk_ids, scores), key=lambda pair: pair[1], reverse=True)
+        ranked = sorted(
+            zip(self._chunk_ids, scores, strict=True), key=lambda pair: pair[1], reverse=True
+        )
 
         results = [
             ScoredChunk(
