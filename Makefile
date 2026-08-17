@@ -1,7 +1,7 @@
 PY ?= python
 PIP ?= $(PY) -m pip
 
-.PHONY: help install fixtures fixtures-index doctor test lint format clean verify-phase-0 verify-phase-1 verify-phase-2 verify-phase-3
+.PHONY: help install fixtures fixtures-index doctor test lint format clean verify-phase-0 verify-phase-1 verify-phase-2 verify-phase-3 verify-phase-4
 
 help:
 	@echo "install         install the package with core + dev extras"
@@ -14,6 +14,7 @@ help:
 	@echo "verify-phase-1  full Phase 1 acceptance run"
 	@echo "verify-phase-2  full Phase 2 acceptance run"
 	@echo "verify-phase-3  full Phase 3 acceptance run"
+	@echo "verify-phase-4  full Phase 4 acceptance run"
 
 install:
 	$(PIP) install -e ".[core,dev]"
@@ -117,3 +118,32 @@ verify-phase-3:
 	@echo "==> tests"
 	@$(PY) -m pytest tests/test_phase_0.py tests/test_phase_1.py tests/test_phase_2.py tests/test_phase_3.py -q
 	@echo "PHASE 3 OK"
+
+# Phase 4 acceptance: builds a real parent/child chunk-set pair on api_docs, a
+# real BGE index on the child set (AC-4 needs genuine embedding signal -- the
+# committed fixture index is a 32-dim HashEmbedder over 19 vectors, useless
+# for "BM25 beats dense on an identifier query"), then exercises every
+# retriever via `retrieve compare` on a query that names a distinctive
+# api_docs error identifier. Also re-checks both fixture generators.
+verify-phase-4:
+	@echo "==> installing (core + dev + embed)"
+	@$(PIP) install -e ".[core,dev,embed]" -q
+	@echo "==> checking fixture determinism (core + index + parent/child fixtures)"
+	@$(PY) scripts/build_fixtures.py --check
+	@$(PY) scripts/build_index_fixture.py --check
+	@echo "==> building api_docs and a real parent/child chunk-set pair"
+	@$(PY) -m rag_lab.cli corpus build --all
+	@PARENT_ID=$$($(PY) -m rag_lab.cli chunk run --corpus api_docs --chunker markdown --params max_tokens=2048 --role parent | grep -oE 'api_docs__markdown__[a-f0-9]+'); \
+	CHILD_ID=$$($(PY) -m rag_lab.cli chunk run --corpus api_docs --chunker recursive --params chunk_tokens=256 --role child --parent-chunk-set $$PARENT_ID | grep -oE 'api_docs__recursive__[a-f0-9]+'); \
+	echo "==> building a BGE index on the child chunk set"; \
+	INDEX_ID=$$($(PY) -m rag_lab.cli index build --chunk-set $$CHILD_ID --embedder bge-small | grep -oE '[a-z0-9_]+__bge-small__[a-f0-9]+'); \
+	echo "==> retrieve compare across every retriever, including parent_doc"; \
+	$(PY) -m rag_lab.cli retrieve compare --index-id $$INDEX_ID \
+	    --retrievers dense,bm25,hybrid,parent_doc,sentence_window \
+	    --parent-chunk-set $$PARENT_ID \
+	    --query "What does the error code IDEMPOTENCY_KEY_CONFLICT mean?"
+	@echo "==> doctor"
+	@$(PY) -m rag_lab.cli doctor
+	@echo "==> tests"
+	@$(PY) -m pytest tests/test_phase_0.py tests/test_phase_1.py tests/test_phase_2.py tests/test_phase_3.py tests/test_phase_4.py -q
+	@echo "PHASE 4 OK"

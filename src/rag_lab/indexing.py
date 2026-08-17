@@ -51,7 +51,7 @@ def write_manifest(index_dir: Path, manifest: IndexManifest) -> None:
     _manifest_path(index_dir).write_text(manifest.model_dump_json(indent=2), encoding="utf-8")
 
 
-def _embedder_for(name: str, params: dict[str, Any]):
+def embedder_for(name: str, params: dict[str, Any]):
     """Reconstruct the embedder that produced a given index's vectors.
 
     ``HashEmbedder`` is deliberately absent from ``embedders.NAMED_EMBEDDERS``
@@ -60,6 +60,10 @@ def _embedder_for(name: str, params: dict[str, Any]):
     with it, and searching that index needs to reconstruct the exact same
     embedder to embed the query. This is the one place that special-cases it,
     driven entirely by what ``manifest.embedder`` says was actually used.
+
+    Public (not ``_embedder_for``) because Phase 4's retriever registry needs
+    it too, to build the same query-time embedder a ``DenseRetriever`` (or
+    ``hybrid``'s dense component) embeds queries with.
     """
     if name == HashEmbedder.name:
         return HashEmbedder(params)
@@ -126,14 +130,22 @@ def load_store(index_id: str) -> ChromaStore:
     return ChromaStore(_index_dir_for(index_id))
 
 
+def load_manifest_and_store(index_id: str) -> tuple[IndexManifest, ChromaStore]:
+    """Resolve ``index_id`` once and return both its manifest and an open
+    store -- what Phase 4's ``retrieval.py`` needs so ``retrieve compare``
+    opens the Chroma client a single time for N retrievers, instead of once
+    per retriever."""
+    index_dir = _index_dir_for(index_id)
+    return load_manifest(index_dir), ChromaStore(index_dir)
+
+
 def search_index(
     index_id: str, query: str, k: int = 5
 ) -> tuple[IndexManifest, list[ScoredChunk]]:
-    index_dir = _index_dir_for(index_id)
-    manifest = load_manifest(index_dir)
-    embedder = _embedder_for(manifest.embedder, manifest.embedder_params)
+    manifest, store = load_manifest_and_store(index_id)
+    embedder = embedder_for(manifest.embedder, manifest.embedder_params)
     vector = embedder.embed_query(query)
-    return manifest, ChromaStore(index_dir).search(vector, k)
+    return manifest, store.search(vector, k)
 
 
 def available_index_ids() -> list[str]:
@@ -189,8 +201,10 @@ def render_search_results(query: str, results: list[ScoredChunk], console: Conso
 __all__ = [
     "available_index_ids",
     "build_index",
+    "embedder_for",
     "list_manifests",
     "load_manifest",
+    "load_manifest_and_store",
     "load_store",
     "render_index_list_table",
     "render_search_results",

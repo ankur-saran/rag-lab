@@ -26,6 +26,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from rag_lab.chunkers.hierarchy import assign_parents  # noqa: E402
 from rag_lab.ids import (  # noqa: E402
     chunker_signature,
     make_chunk_id,
@@ -36,7 +37,14 @@ from rag_lab.ids import (  # noqa: E402
 )
 from rag_lab.jsonl import write_jsonl  # noqa: E402
 from rag_lab.normalize import normalize_text as normalize  # noqa: E402
-from rag_lab.schemas import Chunk, Document, EvalPair, QueryTrace, RunResult  # noqa: E402
+from rag_lab.schemas import (  # noqa: E402
+    Chunk,
+    ChunkRole,
+    Document,
+    EvalPair,
+    QueryTrace,
+    RunResult,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 RAW = ROOT / "fixtures" / "raw"
@@ -44,6 +52,16 @@ OUT = ROOT / "fixtures"
 
 FIXTURE_CHUNKER = "paragraph_fixture"
 FIXTURE_PARAMS = {"min_chars": 40}
+
+# A coarser merge of the same elementary paragraph spans, used to build the
+# committed parent/child fixture pair (fixtures/chunks/sample_parent.jsonl,
+# sample_child.jsonl) that Phase 4's ParentDocumentRetriever tests consume.
+# Because both this and FIXTURE_PARAMS merge the *same* underlying spans()
+# list (see paragraph_spans below) with only the threshold differing, every
+# min_chars=40 span is guaranteed to nest inside exactly one min_chars=400
+# span -- so assign_parents() below can never produce an orphan.
+FIXTURE_PARENT_CHUNKER = "paragraph_fixture_parent"
+FIXTURE_PARENT_PARAMS = {"min_chars": 400}
 
 
 def build_documents() -> list[Document]:
@@ -87,16 +105,20 @@ def paragraph_spans(text: str, min_chars: int) -> list[tuple[int, int]]:
     return merged
 
 
-def build_chunks(docs: list[Document]) -> list[Chunk]:
+def _build_paragraph_chunks(
+    docs: list[Document],
+    chunker: str,
+    params: dict,
+    *,
+    role: ChunkRole = "standalone",
+) -> list[Chunk]:
     chunks: list[Chunk] = []
-    signature = chunker_signature(FIXTURE_CHUNKER, FIXTURE_PARAMS)
+    signature = chunker_signature(chunker, params)
 
     for doc in docs:
-        chunk_set = make_chunk_set_id(doc.corpus, FIXTURE_CHUNKER, FIXTURE_PARAMS)
+        chunk_set = make_chunk_set_id(doc.corpus, chunker, params)
         heading_path: list[str] = []
-        for ordinal, (start, end) in enumerate(
-            paragraph_spans(doc.text, FIXTURE_PARAMS["min_chars"])
-        ):
+        for ordinal, (start, end) in enumerate(paragraph_spans(doc.text, params["min_chars"])):
             body = doc.text[start:end]
 
             heading = re.match(r"^(#{1,6}) (.+)$", body.strip(), flags=re.M)
@@ -120,13 +142,27 @@ def build_chunks(docs: list[Document]) -> list[Chunk]:
                     char_end=end,
                     token_count=max(1, len(body) // 4),  # approximation; tiktoken lands in Phase 2
                     ordinal=ordinal,
+                    role=role,
                     heading_path=list(heading_path),
-                    chunker=FIXTURE_CHUNKER,
-                    chunker_params=dict(FIXTURE_PARAMS),
+                    chunker=chunker,
+                    chunker_params=dict(params),
                     meta={"approx_tokens": True},
                 )
             )
     return chunks
+
+
+def build_chunks(docs: list[Document]) -> list[Chunk]:
+    return _build_paragraph_chunks(docs, FIXTURE_CHUNKER, FIXTURE_PARAMS)
+
+
+def build_parent_chunks(docs: list[Document]) -> list[Chunk]:
+    """A coarser, ``role="parent"`` sibling of ``build_chunks``'s output --
+    see the ``FIXTURE_PARENT_PARAMS`` comment for why every child chunk is
+    guaranteed to nest inside exactly one of these."""
+    return _build_paragraph_chunks(
+        docs, FIXTURE_PARENT_CHUNKER, FIXTURE_PARENT_PARAMS, role="parent"
+    )
 
 
 # Queries are hand-written against known substrings so the gold spans are exact
@@ -262,10 +298,20 @@ def write_all(out: Path) -> dict[str, int]:
     pairs = build_evalset(docs, chunks)
     verify(docs, chunks)
 
+    # Parent/child fixture pair for Phase 4's ParentDocumentRetriever tests.
+    # child_chunks reuses chunks' exact spans/text/chunk_ids -- assign_parents
+    # only adds role="child" + parent_id -- so it never needs its own offset
+    # verification; parent_chunks are real slices too, so they do.
+    parent_chunks = build_parent_chunks(docs)
+    verify(docs, parent_chunks)
+    child_chunks = assign_parents(chunks, parent_chunks)
+
     counts = {
         "documents": write_jsonl(out / "documents" / "sample.jsonl", docs),
         "chunks": write_jsonl(out / "chunks" / "sample.jsonl", chunks),
         "evalset": write_jsonl(out / "evalset" / "sample.jsonl", pairs),
+        "chunks_parent": write_jsonl(out / "chunks" / "sample_parent.jsonl", parent_chunks),
+        "chunks_child": write_jsonl(out / "chunks" / "sample_child.jsonl", child_chunks),
     }
 
     run = build_sample_run(pairs)
@@ -306,6 +352,8 @@ def main() -> int:
             "documents/sample.jsonl",
             "chunks/sample.jsonl",
             "evalset/sample.jsonl",
+            "chunks/sample_parent.jsonl",
+            "chunks/sample_child.jsonl",
             "results/sample_run/result.json",
         ):
             committed, regenerated = OUT / rel, tmp_path / rel

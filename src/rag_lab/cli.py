@@ -231,12 +231,34 @@ def chunk_run(
     corpus: Annotated[str, typer.Option("--corpus")],
     chunker: Annotated[str, typer.Option("--chunker")],
     params: Annotated[list[str] | None, typer.Option("--params")] = None,
+    role: Annotated[str, typer.Option("--role")] = "standalone",
+    parent_chunk_set: Annotated[str | None, typer.Option("--parent-chunk-set")] = None,
 ) -> None:
-    """Chunk a corpus into artifacts/chunks/<chunk_set_id>.jsonl."""
+    """Chunk a corpus into artifacts/chunks/<chunk_set_id>.jsonl.
+
+    ``--role parent``/``--role child`` build the hierarchical chunk-set pairs
+    Phase 4's ``parent_doc`` retriever needs (plan §4.7). A child set's
+    ``--parent-chunk-set`` is folded into the hashed params so two child sets
+    built against different parents never collide on the same chunk_set_id.
+    """
     from rag_lab.chunkers import REGISTRY, run_chunker
+    from rag_lab.chunkers.hierarchy import OrphanChildError, assign_parents
+    from rag_lab.chunks import load_chunk_set
     from rag_lab.corpus import list_documents_by_corpus
     from rag_lab.jsonl import write_jsonl
     from rag_lab.paths import artifact_path
+
+    if role not in {"standalone", "parent", "child"}:
+        console.print(
+            f"[red]error:[/red] --role must be one of standalone|parent|child, got {role!r}"
+        )
+        raise typer.Exit(code=1)
+    if role == "child" and not parent_chunk_set:
+        console.print("[red]error:[/red] --role child requires --parent-chunk-set <chunk_set_id>")
+        raise typer.Exit(code=1)
+    if role != "child" and parent_chunk_set:
+        console.print("[red]error:[/red] --parent-chunk-set only applies to --role child")
+        raise typer.Exit(code=1)
 
     if chunker not in REGISTRY:
         console.print(
@@ -252,6 +274,11 @@ def chunk_run(
         raise typer.Exit(code=1) from exc
 
     overrides = parse_overrides(params)
+    if role != "standalone":
+        overrides["role"] = role
+    if role == "child":
+        overrides["parent_chunk_set_id"] = parent_chunk_set
+
     all_chunks = []
     for doc in docs:
         all_chunks.extend(run_chunker(chunker, doc, overrides))
@@ -261,6 +288,16 @@ def chunk_run(
             f"[red]error:[/red] chunker {chunker!r} produced zero chunks for corpus {corpus!r}"
         )
         raise typer.Exit(code=1)
+
+    if role == "parent":
+        all_chunks = [c.model_copy(update={"role": "parent"}) for c in all_chunks]
+    elif role == "child":
+        try:
+            parent_chunks = load_chunk_set(parent_chunk_set)
+            all_chunks = assign_parents(all_chunks, parent_chunks)
+        except (LookupError, FileNotFoundError, OrphanChildError) as exc:
+            console.print(f"[red]error:[/red] {exc}")
+            raise typer.Exit(code=1) from exc
 
     chunk_set_id = all_chunks[0].chunk_set_id
     count = write_jsonl(artifact_path("chunks", f"{chunk_set_id}.jsonl"), all_chunks)
@@ -422,9 +459,41 @@ def retrieve_query(
     query: Annotated[str, typer.Option("--query")],
     retriever: Annotated[str, typer.Option("--retriever")] = "dense",
     k: Annotated[int, typer.Option("--k")] = 5,
+    params: Annotated[list[str] | None, typer.Option("--params")] = None,
+    parent_chunk_set: Annotated[str | None, typer.Option("--parent-chunk-set")] = None,
 ) -> None:
     """Run one retriever."""
-    _not_implemented(4, "retrieve query")
+    from rag_lab.indexing import render_search_results
+    from rag_lab.retrieval import run_retriever
+    from rag_lab.retrievers import available_retrievers
+
+    if retriever not in available_retrievers():
+        console.print(
+            f"[red]error:[/red] unknown retriever {retriever!r}. "
+            f"available: {', '.join(available_retrievers())}"
+        )
+        raise typer.Exit(code=1)
+
+    overrides = parse_overrides(params)
+    if retriever == "parent_doc":
+        if not parent_chunk_set:
+            console.print(
+                "[red]error:[/red] --retriever parent_doc requires "
+                "--parent-chunk-set <chunk_set_id>"
+            )
+            raise typer.Exit(code=1)
+        overrides["parent_chunk_set_id"] = parent_chunk_set
+
+    try:
+        _manifest, results = run_retriever(index_id, retriever, query, k, overrides)
+    except (LookupError, FileNotFoundError, ValueError) as exc:
+        console.print(f"[red]error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    if not results:
+        console.print("[yellow]no results[/yellow]")
+        raise typer.Exit(code=0)
+    render_search_results(query, results, console)
 
 
 @retrieve_app.command("compare")
@@ -433,9 +502,48 @@ def retrieve_compare(
     query: Annotated[str, typer.Option("--query")],
     retrievers: Annotated[str, typer.Option("--retrievers")] = "dense,bm25,hybrid",
     k: Annotated[int, typer.Option("--k")] = 5,
+    params: Annotated[list[str] | None, typer.Option("--params")] = None,
+    parent_chunk_set: Annotated[str | None, typer.Option("--parent-chunk-set")] = None,
 ) -> None:
-    """Run several retrievers side by side."""
-    _not_implemented(4, "retrieve compare")
+    """Run several retrievers side by side.
+
+    ``--params`` is namespaced per retriever (unlike ``retrieve query``'s flat
+    ``--params``, since this command builds several retrievers at once), e.g.
+    ``--params hybrid.k_rrf=30 --params hybrid.weights.dense=2.0``.
+    """
+    from rag_lab.retrieval import compare_retrievers, render_compare_table
+    from rag_lab.retrievers import available_retrievers
+
+    names = [n.strip() for n in retrievers.split(",") if n.strip()]
+    unknown = [n for n in names if n not in available_retrievers()]
+    if unknown:
+        console.print(
+            f"[red]error:[/red] unknown retriever(s) {unknown}. "
+            f"available: {', '.join(available_retrievers())}"
+        )
+        raise typer.Exit(code=1)
+
+    overrides_by_name = parse_overrides(params)
+    if parent_chunk_set:
+        overrides_by_name.setdefault("parent_doc", {})["parent_chunk_set_id"] = parent_chunk_set
+    if "parent_doc" in names and "parent_chunk_set_id" not in overrides_by_name.get(
+        "parent_doc", {}
+    ):
+        console.print(
+            "[red]error:[/red] --retrievers includes parent_doc, which requires "
+            "--parent-chunk-set <chunk_set_id>"
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        _manifest, results_by_name = compare_retrievers(
+            index_id, names, query, k, overrides_by_name
+        )
+    except (LookupError, FileNotFoundError, ValueError) as exc:
+        console.print(f"[red]error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    render_compare_table(query, results_by_name, k, console)
 
 
 @evalset_app.command("build")
