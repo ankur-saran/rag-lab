@@ -58,6 +58,29 @@ def make_query_id(corpus: str, doc_id: str, spans: list[tuple[int, int]], query:
     return sha1_hex(corpus, doc_id, *flat, query)[:CHUNK_ID_LEN]
 
 
+def make_cell_id(
+    corpus: str,
+    chunk_set_id: str,
+    index_id: str,
+    retriever: str,
+    retriever_params: dict[str, Any],
+    k: int,
+) -> str:
+    """Content-addressed identity for one cell of a Phase 6 experiment matrix.
+
+    Deliberately *not* the cell's position in the matrix -- a positional index
+    shifts the moment the matrix YAML is reordered or extended, which would
+    silently misalign a resumed run's "skip completed cells" check against a
+    different cell than the one that actually produced that file. Hashing the
+    resolved (corpus, chunk_set_id, index_id, retriever, retriever_params, k)
+    tuple instead means the same cell always lands on the same id regardless of
+    where it sits in the file.
+    """
+    return sha1_hex(
+        corpus, chunk_set_id, index_id, retriever, params_hash(retriever_params), k
+    )[:CHUNK_ID_LEN]
+
+
 def split_for(query_id: str, ratios: tuple[float, float, float] = (0.6, 0.2, 0.2)) -> str:
     """Deterministic train/dev/test assignment by ID hash.
 
@@ -75,6 +98,7 @@ def split_for(query_id: str, ratios: tuple[float, float, float] = (0.6, 0.2, 0.2
 
 __all__ = [
     "chunker_signature",
+    "make_cell_id",
     "make_chunk_id",
     "make_chunk_set_id",
     "make_doc_id",

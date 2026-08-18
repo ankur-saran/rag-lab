@@ -240,13 +240,12 @@ def chunk_run(
     Phase 4's ``parent_doc`` retriever needs (plan §4.7). A child set's
     ``--parent-chunk-set`` is folded into the hashed params so two child sets
     built against different parents never collide on the same chunk_set_id.
+
+    Delegates the actual build (and its caching) to
+    ``chunkers.build_chunk_set`` -- the same function Phase 6's experiment
+    runner uses, so a chunk set built via either path is byte-identical.
     """
-    from rag_lab.chunkers import REGISTRY, run_chunker
-    from rag_lab.chunkers.hierarchy import OrphanChildError, assign_parents
-    from rag_lab.chunks import load_chunk_set
-    from rag_lab.corpus import list_documents_by_corpus
-    from rag_lab.jsonl import write_jsonl
-    from rag_lab.paths import artifact_path
+    from rag_lab.chunkers import OrphanChildError, REGISTRY, build_chunk_set
 
     if role not in {"standalone", "parent", "child"}:
         console.print(
@@ -267,41 +266,20 @@ def chunk_run(
         )
         raise typer.Exit(code=1)
 
+    overrides = parse_overrides(params)
+
     try:
-        docs = list_documents_by_corpus(corpus)[corpus]
-    except LookupError as exc:
+        chunk_set_id, all_chunks, _cache_hit = build_chunk_set(
+            corpus, chunker, overrides, role=role, parent_chunk_set_id=parent_chunk_set
+        )
+    except (LookupError, FileNotFoundError, ValueError, OrphanChildError) as exc:
         console.print(f"[red]error:[/red] {exc}")
         raise typer.Exit(code=1) from exc
 
-    overrides = parse_overrides(params)
-    if role != "standalone":
-        overrides["role"] = role
-    if role == "child":
-        overrides["parent_chunk_set_id"] = parent_chunk_set
-
-    all_chunks = []
-    for doc in docs:
-        all_chunks.extend(run_chunker(chunker, doc, overrides))
-
-    if not all_chunks:
-        console.print(
-            f"[red]error:[/red] chunker {chunker!r} produced zero chunks for corpus {corpus!r}"
-        )
-        raise typer.Exit(code=1)
-
-    if role == "parent":
-        all_chunks = [c.model_copy(update={"role": "parent"}) for c in all_chunks]
-    elif role == "child":
-        try:
-            parent_chunks = load_chunk_set(parent_chunk_set)
-            all_chunks = assign_parents(all_chunks, parent_chunks)
-        except (LookupError, FileNotFoundError, OrphanChildError) as exc:
-            console.print(f"[red]error:[/red] {exc}")
-            raise typer.Exit(code=1) from exc
-
-    chunk_set_id = all_chunks[0].chunk_set_id
-    count = write_jsonl(artifact_path("chunks", f"{chunk_set_id}.jsonl"), all_chunks)
-    console.print(f"[green]ok[/green]  {chunk_set_id}: {count} chunks from {len(docs)} documents")
+    doc_count = len({c.doc_id for c in all_chunks})
+    console.print(
+        f"[green]ok[/green]  {chunk_set_id}: {len(all_chunks)} chunks from {doc_count} documents"
+    )
 
 
 @chunk_app.command("stats")
