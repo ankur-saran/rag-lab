@@ -50,8 +50,12 @@ def make_run_id(experiment_name: str, now: datetime | None = None) -> str:
     return f"{experiment_name}__{stamp}"
 
 
-def make_query_id(corpus: str, doc_id: str, span: tuple[int, int], query: str) -> str:
-    return sha1_hex(corpus, doc_id, span[0], span[1], query)[:CHUNK_ID_LEN]
+def make_query_id(corpus: str, doc_id: str, spans: list[tuple[int, int]], query: str) -> str:
+    """Hashes every gold span, not just one — a cross_reference pair's two
+    spans are both part of the query's identity, so changing either changes
+    the ID."""
+    flat = tuple(coord for span in spans for coord in span)
+    return sha1_hex(corpus, doc_id, *flat, query)[:CHUNK_ID_LEN]
 
 
 def split_for(query_id: str, ratios: tuple[float, float, float] = (0.6, 0.2, 0.2)) -> str:

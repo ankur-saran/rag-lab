@@ -270,20 +270,26 @@ def test_fixture_evalset_gold_spans_resolve_to_their_quote():
     pairs = read_jsonl(fixture_path("evalset"), EvalPair)
     assert pairs
     for pair in pairs:
-        start, end = pair.gold_char_span
-        assert docs[pair.gold_doc_id].text[start:end] == pair.supporting_quote
+        assert len(pair.gold_char_spans) == len(pair.supporting_quotes)
+        for (start, end), quote in zip(pair.gold_char_spans, pair.supporting_quotes):
+            assert docs[pair.gold_doc_id].text[start:end] == quote
 
 
 def test_fixture_evalset_gold_chunks_are_derivable():
-    """gold_chunk_ids must be re-derivable from the span, never authoritative."""
+    """sampling_chunk_ids must be re-derivable from the spans, never authoritative."""
     chunks = read_jsonl(fixture_path("chunks"), Chunk)
     by_id = {c.chunk_id: c for c in chunks}
     for pair in read_jsonl(fixture_path("evalset"), EvalPair):
-        assert pair.gold_chunk_ids
-        for chunk_id in pair.gold_chunk_ids:
+        assert pair.sampling_chunk_ids
+        for chunk_id in pair.sampling_chunk_ids:
             chunk = by_id[chunk_id]
-            start, end = pair.gold_char_span
-            assert chunk.char_start < end and start < chunk.char_end
+            # Gold if the chunk overlaps ANY one of the pair's spans -- never
+            # only the enclosing range, which would also catch chunks sitting
+            # strictly between two distant cross_reference spans.
+            assert any(
+                chunk.char_start < end and start < chunk.char_end
+                for start, end in pair.gold_char_spans
+            )
 
 
 def test_fixture_results_are_readable():

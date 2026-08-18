@@ -453,7 +453,7 @@ def test_ac6_searching_a_chunks_own_text_returns_it_at_rank_1():  # AC-6
 @requires_sentence_transformers
 @requires_chromadb
 def test_ac4_truncation_recall_within_ten_points_of_full_dim():  # AC-4
-    pairs = [p for p in read_jsonl(fixture_path("evalset"), EvalPair) if p.gold_chunk_ids]
+    pairs = [p for p in read_jsonl(fixture_path("evalset"), EvalPair) if p.sampling_chunk_ids]
     assert pairs  # the fixture evalset must have gold to be a useful check at all
 
     chunk_set_id = _unique_chunk_set_id("recall")
@@ -470,7 +470,7 @@ def test_ac4_truncation_recall_within_ten_points_of_full_dim():  # AC-4
         hits = 0
         for pair in pairs:
             _m, results = indexing.search_index(manifest.index_id, pair.query, k=5)
-            if {r.chunk.chunk_id for r in results} & set(pair.gold_chunk_ids):
+            if {r.chunk.chunk_id for r in results} & set(pair.sampling_chunk_ids):
                 hits += 1
         return hits / len(pairs)
 

@@ -166,41 +166,51 @@ def build_parent_chunks(docs: list[Document]) -> list[Chunk]:
 
 
 # Queries are hand-written against known substrings so the gold spans are exact
-# and independent of any chunker. (needle, question, difficulty)
+# and independent of any chunker. (needles, question, difficulty) — a tuple of
+# *one* needle for lookup/synthesis, or *two or more* for cross_reference: that
+# tier's gold is genuinely multiple, often-distant spans in the same document,
+# not one span that happens to mention several things, so it needs a distinct
+# needle per fact instead of one string covering both.
 #
 # Needles must not straddle a line break — the raw fixtures are hard-wrapped, so
 # a needle spanning a wrap will not be found. Keep them short and single-line.
-SEEDS: list[tuple[str, str, str]] = [
-    ("default limit is 25", "What is the default page size for list endpoints?", "lookup"),
-    ("Cursors expire after 24 hours", "How long is a pagination cursor valid?", "lookup"),
+SEEDS: list[tuple[tuple[str, ...], str, str]] = [
+    (("default limit is 25",), "What is the default page size for list endpoints?", "lookup"),
+    (("Cursors expire after 24 hours",), "How long is a pagination cursor valid?", "lookup"),
     (
-        "`items`, `next_cursor`",
+        ("`items`, `next_cursor`",),
         "Which fields does a paginated response envelope contain?",
         "lookup",
     ),
     (
-        "access token valid for one hour",
+        ("access token valid for one hour",),
         "How long does an access token remain valid after issuance?",
         "lookup",
     ),
     (
-        "10 requests per minute",
+        ("10 requests per minute",),
         "What is the rate limit on authentication endpoints?",
         "lookup",
     ),
     (
-        "one and one-half percent (1.5%) per month",
+        ("one and one-half percent (1.5%) per month",),
         "What interest rate applies to overdue undisputed amounts?",
         "lookup",
     ),
     (
-        "disputes in good faith",
+        ("disputes in good faith",),
         "Under what conditions does interest not accrue on an invoice?",
         "synthesis",
     ),
     (
-        "Sections 4, 7, and 9 shall",
-        "Which sections survive termination of the agreement?",
+        # Two spans, three paragraphs apart (Section 4.3 and Section 5.3, with
+        # 5.1/5.2 in between) — a genuine cross_reference example, not a single
+        # span that happens to name two things.
+        ("disputes in good faith and in writing", "Sections 4, 7, and 9 shall"),
+        (
+            "What must Customer do to avoid interest accruing on a disputed "
+            "invoice, and which sections of the agreement survive its termination?"
+        ),
         "cross_reference",
     ),
 ]
@@ -212,20 +222,22 @@ def build_evalset(docs: list[Document], chunks: list[Chunk]) -> list[EvalPair]:
         by_doc.setdefault(chunk.doc_id, []).append(chunk)
 
     pairs: list[EvalPair] = []
-    for needle, query, difficulty in SEEDS:
-        host = next((d for d in docs if needle in d.text), None)
+    for needles, query, difficulty in SEEDS:
+        host = next((d for d in docs if all(needle in d.text for needle in needles)), None)
         if host is None:
-            raise SystemExit(f"fixture seed not found in any document: {needle!r}")
+            raise SystemExit(f"fixture seed not found in any document: {needles!r}")
 
-        start = host.text.index(needle)
-        span = (start, start + len(needle))
+        spans = [(host.text.index(n), host.text.index(n) + len(n)) for n in needles]
 
-        gold = [
-            c.chunk_id
-            for c in by_doc[host.doc_id]
-            if c.char_start <= span[0] < c.char_end or c.char_start < span[1] <= c.char_end
-        ]
-        query_id = make_query_id(host.corpus, host.doc_id, span, query)
+        gold = sorted(
+            {
+                c.chunk_id
+                for span in spans
+                for c in by_doc[host.doc_id]
+                if c.char_start <= span[0] < c.char_end or c.char_start < span[1] <= c.char_end
+            }
+        )
+        query_id = make_query_id(host.corpus, host.doc_id, spans, query)
 
         pairs.append(
             EvalPair(
@@ -233,10 +245,10 @@ def build_evalset(docs: list[Document], chunks: list[Chunk]) -> list[EvalPair]:
                 corpus=host.corpus,
                 query=query,
                 gold_doc_id=host.doc_id,
-                gold_char_span=span,
-                gold_chunk_ids=gold,  # derived; re-resolved per chunk set in Phase 6
+                gold_char_spans=spans,
+                sampling_chunk_ids=gold,  # derived; re-resolved per chunk set in Phase 6
                 answer=None,
-                supporting_quote=needle,
+                supporting_quotes=list(needles),
                 difficulty=difficulty,  # type: ignore[arg-type]
                 split=split_for(query_id),  # type: ignore[arg-type]
                 generator_model="handwritten-fixture",
@@ -251,11 +263,11 @@ def build_sample_run(pairs: list[EvalPair]) -> RunResult:
         QueryTrace(
             query_id=p.query_id,
             query=p.query,
-            retrieved_chunk_ids=list(p.gold_chunk_ids),
-            retrieved_scores=[0.9 - 0.1 * i for i in range(len(p.gold_chunk_ids))],
-            gold_chunk_ids=list(p.gold_chunk_ids),
-            first_hit_rank=1 if p.gold_chunk_ids else None,
-            metrics={"recall@5": 1.0 if p.gold_chunk_ids else 0.0},
+            retrieved_chunk_ids=list(p.sampling_chunk_ids),
+            retrieved_scores=[0.9 - 0.1 * i for i in range(len(p.sampling_chunk_ids))],
+            gold_chunk_ids=list(p.sampling_chunk_ids),
+            first_hit_rank=1 if p.sampling_chunk_ids else None,
+            metrics={"recall@5": 1.0 if p.sampling_chunk_ids else 0.0},
             latency_ms=4.2,
         )
         for p in pairs

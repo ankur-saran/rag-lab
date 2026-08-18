@@ -132,21 +132,31 @@ class IndexManifest(_Base):
 class EvalPair(_Base):
     """A gold-labeled query. Output of Phase 5.
 
-    ``gold_char_span`` is the *authoritative* label and is expressed in document
-    coordinates, deliberately. Labels expressed as chunk IDs would only be valid
-    for the chunk set that produced them, which would make chunker comparison
-    circular — the exact thing this project exists to measure. ``gold_chunk_ids``
-    is a derived convenience field, re-resolved per chunk set at evaluation time.
+    ``gold_char_spans`` is the *authoritative* label and is expressed in
+    document coordinates, deliberately, as a **list**: most pairs (``lookup``,
+    ``synthesis``) carry exactly one span, but ``cross_reference`` pairs need
+    two — often distant — spans in the same document, and gold status must be
+    evaluated against each span independently (see ``resolve_gold`` in Phase
+    6). Collapsing a pair's spans into one enclosing range would silently mark
+    every chunk *between* the two real reference points as gold too.
+
+    Labels expressed as chunk IDs would only be valid for the chunk set that
+    produced them, which would make chunker comparison circular — the exact
+    thing this project exists to measure. ``sampling_chunk_ids`` is a derived
+    convenience field (which chunks the generation-time *sampling* chunk set
+    touched), re-resolved per chunk set at evaluation time; it is provenance,
+    never authoritative, and downstream code must always re-derive gold via
+    ``resolve_gold`` rather than reading it directly.
     """
 
     query_id: str
     corpus: str
     query: str
     gold_doc_id: str
-    gold_char_span: tuple[int, int]
-    gold_chunk_ids: list[str] = Field(default_factory=list)  # derived, not authoritative
+    gold_char_spans: list[tuple[int, int]] = Field(min_length=1)
+    sampling_chunk_ids: list[str] = Field(default_factory=list)  # derived, not authoritative
     answer: str | None = None
-    supporting_quote: str | None = None
+    supporting_quotes: list[str] = Field(default_factory=list)  # index-aligned with gold_char_spans
     difficulty: Difficulty = "lookup"
     split: Literal["train", "dev", "test"] = "train"
     generator_model: str = "unknown"
@@ -154,9 +164,10 @@ class EvalPair(_Base):
 
     @model_validator(mode="after")
     def _validate_span(self) -> EvalPair:
-        start, end = self.gold_char_span
-        if start < 0 or end < start:
-            raise ValueError(f"invalid gold_char_span: {self.gold_char_span}")
+        for span in self.gold_char_spans:
+            start, end = span
+            if start < 0 or end < start:
+                raise ValueError(f"invalid gold_char_span: {span}")
         return self
 
 

@@ -161,19 +161,22 @@
       "exclusion_reason": null,
       "first_hit_rank": 1,
       "gold_chunk_ids": [
-        "7f92ce14e8d5181c"
+        "7f92ce14e8d5181c",
+        "cf68596d9493dd65"
       ],
       "latency_ms": 4.2,
       "metrics": {
         "recall@5": 1.0
       },
-      "query": "Which sections survive termination of the agreement?",
-      "query_id": "277207289f73b130",
+      "query": "What must Customer do to avoid interest accruing on a disputed invoice, and which sections of the agreement survive its termination?",
+      "query_id": "7973196b11ea1a43",
       "retrieved_chunk_ids": [
-        "7f92ce14e8d5181c"
+        "7f92ce14e8d5181c",
+        "cf68596d9493dd65"
       ],
       "retrieved_scores": [
-        0.9
+        0.9,
+        0.8
       ]
     }
   ],

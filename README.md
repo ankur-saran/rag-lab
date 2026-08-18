@@ -92,8 +92,11 @@ downstream. Do not collapse the two fields.
 **Gold labels are document character offsets, never chunk IDs.** A label
 expressed as a chunk ID is only valid for the chunk set that produced it, which
 would make chunker comparison circular — the exact thing this project exists to
-measure. `EvalPair.gold_char_span` is authoritative; `gold_chunk_ids` is derived
-and re-resolved per chunk set at evaluation time.
+measure. `EvalPair.gold_char_spans` is authoritative (a list — most pairs carry
+one span, `cross_reference` pairs carry two or more distant spans in the same
+document, each resolved to gold chunks independently); `sampling_chunk_ids` is
+derived provenance from generation-time sampling and is re-resolved per chunk
+set at evaluation time.
 
 ## Caching
 
