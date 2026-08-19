@@ -245,7 +245,7 @@ def chunk_run(
     ``chunkers.build_chunk_set`` -- the same function Phase 6's experiment
     runner uses, so a chunk set built via either path is byte-identical.
     """
-    from rag_lab.chunkers import OrphanChildError, REGISTRY, build_chunk_set
+    from rag_lab.chunkers import REGISTRY, OrphanChildError, build_chunk_set
 
     if role not in {"standalone", "parent", "child"}:
         console.print(

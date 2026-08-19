@@ -294,7 +294,10 @@ def main() -> int:
         return 0
 
     if not out_path.exists():
-        print(f"{out_path} missing -- run `python scripts/build_api_docs_evalset.py` first", file=sys.stderr)
+        print(
+            f"{out_path} missing -- run `python scripts/build_api_docs_evalset.py` first",
+            file=sys.stderr,
+        )
         return 1
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp) / f"{CORPUS}.jsonl"

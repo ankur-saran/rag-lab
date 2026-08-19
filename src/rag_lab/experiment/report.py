@@ -107,7 +107,12 @@ def render_report_markdown(results: list[RunResult]) -> str:
     lines = ["| " + " | ".join(header) + " |", "|" + "---|" * len(header)]
     for r in results:
         cfg = r.config
-        row = [r.corpus, str(cfg.get("chunker", "?")), str(cfg.get("embedder", "?")), str(cfg.get("retriever", "?"))]
+        row = [
+            r.corpus,
+            str(cfg.get("chunker", "?")),
+            str(cfg.get("embedder", "?")),
+            str(cfg.get("retriever", "?")),
+        ]
         for metric in HEADLINE_METRICS:
             values = _values_for(r, metric)
             if values:
@@ -132,7 +137,12 @@ CellKey = tuple[str, str, str, str]  # (corpus, chunker, embedder, retriever)
 
 def _cell_key(result: RunResult) -> CellKey:
     cfg = result.config
-    return (result.corpus, str(cfg.get("chunker")), str(cfg.get("embedder")), str(cfg.get("retriever")))
+    return (
+        result.corpus,
+        str(cfg.get("chunker")),
+        str(cfg.get("embedder")),
+        str(cfg.get("retriever")),
+    )
 
 
 def compare_runs(run_ids: list[str]) -> dict[CellKey, dict[str, RunResult]]:
@@ -166,7 +176,9 @@ def render_compare_table(
         row = [escape("/".join(key))]
         for run_id in run_ids:
             m = by_run[run_id].metrics
-            row.append(f"recall@5={m.get('recall@5', 0.0):.3f}  ndcg@10={m.get('ndcg@10', 0.0):.3f}")
+            row.append(
+                f"recall@5={m.get('recall@5', 0.0):.3f}  ndcg@10={m.get('ndcg@10', 0.0):.3f}"
+            )
         table.add_row(*row)
     console.print(table)
 
@@ -176,7 +188,9 @@ def render_compare_table(
 # --------------------------------------------------------------------------- #
 
 
-def worst_failures(run_id: str, config_idx: int, n: int = 20) -> tuple[Cell, RunResult, list[QueryTrace]]:
+def worst_failures(
+    run_id: str, config_idx: int, n: int = 20
+) -> tuple[Cell, RunResult, list[QueryTrace]]:
     """Re-expands the matrix from the run's own ``matrix.json`` and indexes
     into it -- the same config always expands the same way (Step 6.3), so
     ``config_idx`` is stable across ``report``/``compare``/``failures`` calls

@@ -161,8 +161,11 @@ class TestChunkEfficiency:
         assert chunk_efficiency(chunks, k=5, hit=False) is None
 
     def test_sums_token_counts_of_top_k_when_hit(self):
-        chunks = [_chunk("a", char_end=5), _chunk("b", char_end=15), _chunk("c", char_end=100)]
-        # token_count == char_end - char_start for this helper: 5, 10, 90
+        chunks = [
+            _chunk("a", char_start=0, char_end=5),  # 5 tokens
+            _chunk("b", char_start=5, char_end=15),  # 10 tokens
+            _chunk("c", char_start=15, char_end=105),  # 90 tokens, excluded by k=2
+        ]
         assert chunk_efficiency(chunks, k=2, hit=True) == pytest.approx(15.0)
 
 
@@ -283,10 +286,11 @@ class TestExpandCells:
         assert len(cells) == 2 * 3 * 3  # no excludes
 
     def test_exclude_rules_prune_redundant_bm25_embedder_combinations(self):
+        truncated = {"name": "bge-small", "params": {"truncate_dim": 256}}
         cells = expand_cells(
             self._config(
                 exclude=[
-                    {"retriever": "bm25", "embedder": {"name": "bge-small", "params": {"truncate_dim": 256}}},
+                    {"retriever": "bm25", "embedder": truncated},
                     {"retriever": "bm25", "embedder": {"name": "minilm"}},
                 ]
             )
@@ -464,7 +468,9 @@ def test_ac4_resume_skips_already_computed_cells(fast_embedder, isolated_artifac
 
 
 @requires_chromadb
-def test_ac5_two_identical_runs_produce_identical_metrics(fast_embedder, isolated_artifacts):  # AC-5
+def test_ac5_two_identical_runs_produce_identical_metrics(  # AC-5
+    fast_embedder, isolated_artifacts
+):
     from rag_lab.experiment.runner import run_experiment
 
     config = load_experiment_config(SMOKE_CONFIG_PATH)
@@ -574,7 +580,9 @@ def test_ac6_markdown_beats_fixed_on_real_api_docs_recall5(api_docs_evalset_buil
 
     def _recall5_values(result):
         return [
-            t.metrics["recall@5"] for t in result.per_query if not t.excluded and "recall@5" in t.metrics
+            t.metrics["recall@5"]
+            for t in result.per_query
+            if not t.excluded and "recall@5" in t.metrics
         ]
 
     fixed_lo, fixed_hi = bootstrap_ci(_recall5_values(by_chunker["fixed"]))

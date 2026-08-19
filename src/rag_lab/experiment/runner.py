@@ -38,6 +38,7 @@ from rich.progress import BarColumn, Progress, TextColumn, TimeRemainingColumn
 from rag_lab import indexing
 from rag_lab.chunkers import build_chunk_set
 from rag_lab.chunks import load_chunk_set
+from rag_lab.config import params_hash
 from rag_lab.evalset import load_evalset
 from rag_lab.experiment.config import Cell, ExperimentConfig, expand_cells
 from rag_lab.ids import make_run_id
@@ -96,16 +97,37 @@ def load_matrix_manifest(run_id: str) -> ExperimentConfig:
 
 def _build_stage(cells: list[Cell], console: Console | None) -> None:
     """Build (or reuse) every distinct chunk set and index the matrix needs,
-    each exactly once, before any evaluation happens."""
+    each exactly once, before any evaluation happens.
+
+    Also warms each distinct embedder's underlying model synchronously here
+    on a cache hit. A *fresh* index build already loads the model as a side
+    effect of embedding the chunk set, but a cache hit skips embedding
+    entirely -- and without this, the model's first-ever load would happen
+    lazily inside stage 2's ``ThreadPoolExecutor``, the first time two
+    threads' retrievers call it concurrently.
+    ``sentence_transformers.SentenceTransformerEmbedder``'s model cache
+    (``functools.lru_cache``) is not safe against that race: two threads
+    racing the same cache miss can both start constructing the underlying
+    torch model at once and crash with a meta-tensor error. Warming here
+    also simply matches this stage's own contract -- model loading is setup
+    cost, and stage 2 is supposed to be pure read-only retrieval.
+    """
     seen_chunk_sets: set[str] = set()
     seen_indexes: set[str] = set()
+    warmed_embedders: set[tuple[str, str]] = set()
     for cell in cells:
         if cell.chunk_set_id not in seen_chunk_sets:
             build_chunk_set(cell.corpus, cell.chunker, cell.chunker_params, force=False)
             seen_chunk_sets.add(cell.chunk_set_id)
         if cell.index_id not in seen_indexes:
-            indexing.build_index(cell.chunk_set_id, cell.embedder, cell.embedder_params, force=False)
+            _manifest, cache_hit = indexing.build_index(
+                cell.chunk_set_id, cell.embedder, cell.embedder_params, force=False
+            )
             seen_indexes.add(cell.index_id)
+            embedder_key = (cell.embedder, params_hash(cell.embedder_params))
+            if cache_hit and embedder_key not in warmed_embedders:
+                indexing.embedder_for(cell.embedder, cell.embedder_params).embed_query("warmup")
+                warmed_embedders.add(embedder_key)
     if console:
         console.print(
             f"[green]build[/green]  {len(seen_chunk_sets)} chunk set(s), "

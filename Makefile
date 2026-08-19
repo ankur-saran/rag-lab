@@ -1,7 +1,7 @@
 PY ?= python
 PIP ?= $(PY) -m pip
 
-.PHONY: help install fixtures fixtures-index doctor test lint format clean verify-phase-0 verify-phase-1 verify-phase-2 verify-phase-3 verify-phase-4
+.PHONY: help install fixtures fixtures-index doctor test lint format clean verify-phase-0 verify-phase-1 verify-phase-2 verify-phase-3 verify-phase-4 verify-phase-6
 
 help:
 	@echo "install         install the package with core + dev extras"
@@ -15,6 +15,7 @@ help:
 	@echo "verify-phase-2  full Phase 2 acceptance run"
 	@echo "verify-phase-3  full Phase 3 acceptance run"
 	@echo "verify-phase-4  full Phase 4 acceptance run"
+	@echo "verify-phase-6  full Phase 6 acceptance run"
 
 install:
 	$(PIP) install -e ".[core,dev]"
@@ -147,3 +148,49 @@ verify-phase-4:
 	@echo "==> tests"
 	@$(PY) -m pytest tests/test_phase_0.py tests/test_phase_1.py tests/test_phase_2.py tests/test_phase_3.py tests/test_phase_4.py -q
 	@echo "PHASE 4 OK"
+
+# Phase 6 acceptance: the smoke matrix runs end to end via the CLI (AC-1's
+# precise <60s / non-empty-metrics assertions live in pytest, which isolates
+# artifacts_dir so they never depend on ambient repo state -- see
+# test_phase_6.py's `isolated_artifacts` fixture and the `cell_fully_excluded`
+# warning in runner.py for why that isolation matters), report/compare/
+# failures/resume are smoke-checked against two real runs, and the
+# hand-authored api_docs eval set (AC-6 -- Phase 5's real generator hasn't
+# shipped yet) is built and checked deterministic. Building the real api_docs
+# corpus+evalset *before* the smoke run is deliberate: it gives smoke.yaml's
+# api_docs cell real, mutually-consistent documents+eval-set (rather than 100%
+# excluded pairs), while its untouched contracts cell falls back to the shared
+# fixture for both -- also mutually consistent, on a clean checkout. This
+# target does not force that cleanliness (it never deletes real artifacts you
+# didn't ask it to): if your own artifacts/documents/contracts.jsonl already
+# exists for real from unrelated earlier work while no real
+# artifacts/evalset/contracts.jsonl does, the contracts row in this run's
+# report will legitimately show "-" (every pair excluded, logged as
+# `cell_fully_excluded`) -- that's the same document-universe mismatch AC-1's
+# pytest test is isolated against, not a Phase 6 bug. `make clean` resets it.
+# Also re-checks both fixture generators.
+verify-phase-6:
+	@echo "==> installing (core + dev + embed)"
+	@$(PIP) install -e ".[core,dev,embed]" -q
+	@echo "==> checking fixture determinism (core + index + parent/child fixtures)"
+	@$(PY) scripts/build_fixtures.py --check
+	@$(PY) scripts/build_index_fixture.py --check
+	@echo "==> building the real api_docs corpus and its hand-authored eval set (AC-6)"
+	@$(PY) -m rag_lab.cli corpus build --corpus api_docs
+	@$(PY) scripts/build_api_docs_evalset.py
+	@$(PY) scripts/build_api_docs_evalset.py --check
+	@echo "==> running the smoke matrix twice (AC-1, AC-5) for report/compare"
+	@RUN_A=$$($(PY) -m rag_lab.cli experiment run --config config/experiments/smoke.yaml --workers 2 | grep -oE 'smoke__[0-9TZ]+' | tail -1); \
+	RUN_B=$$($(PY) -m rag_lab.cli experiment run --config config/experiments/smoke.yaml --workers 2 | grep -oE 'smoke__[0-9TZ]+' | tail -1); \
+	echo "==> experiment report / compare / failures"; \
+	$(PY) -m rag_lab.cli experiment report --run-id $$RUN_A; \
+	$(PY) -m rag_lab.cli experiment report --run-id $$RUN_A --format markdown; \
+	$(PY) -m rag_lab.cli experiment compare --run-ids $$RUN_A,$$RUN_B; \
+	$(PY) -m rag_lab.cli experiment failures --run-id $$RUN_A --config-idx 0; \
+	echo "==> resume: rerunning RUN_A must skip every already-computed cell (AC-4)"; \
+	$(PY) -m rag_lab.cli experiment run --config config/experiments/smoke.yaml --run-id $$RUN_A
+	@echo "==> doctor"
+	@$(PY) -m rag_lab.cli doctor
+	@echo "==> tests"
+	@$(PY) -m pytest tests/test_phase_0.py tests/test_phase_1.py tests/test_phase_2.py tests/test_phase_3.py tests/test_phase_4.py tests/test_phase_6.py -q
+	@echo "PHASE 6 OK"
