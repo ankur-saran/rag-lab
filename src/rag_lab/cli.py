@@ -559,11 +559,34 @@ def evalset_review(
 @experiment_app.command("run")
 def experiment_run(
     config_path: Annotated[str, typer.Option("--config")],
+    run_id: Annotated[str | None, typer.Option("--run-id")] = None,
     workers: Annotated[int, typer.Option("--workers")] = 1,
     force: Annotated[bool, typer.Option("--force")] = False,
 ) -> None:
-    """Expand and execute the strategy matrix."""
-    _not_implemented(6, "experiment run")
+    """Expand and execute the strategy matrix.
+
+    Omit ``--run-id`` to start a fresh run (a timestamped id is minted and
+    printed at the start -- capture it). Pass that id back in via ``--run-id``
+    to resume an interrupted run: completed cells are skipped unless
+    ``--force``.
+    """
+    from rag_lab.experiment import load_experiment_config, run_experiment
+
+    try:
+        config = load_experiment_config(config_path)
+    except (FileNotFoundError, ValueError) as exc:
+        console.print(f"[red]error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    try:
+        resolved_run_id, results = run_experiment(
+            config, run_id=run_id, workers=workers, force=force, console=console
+        )
+    except (LookupError, FileNotFoundError, ValueError) as exc:
+        console.print(f"[red]error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(f"[green]ok[/green]  {resolved_run_id}: {len(results)} cell(s) computed")
 
 
 @experiment_app.command("report")
@@ -572,22 +595,59 @@ def experiment_report(
     fmt: Annotated[str, typer.Option("--format")] = "table",
 ) -> None:
     """Metrics table with bootstrap confidence intervals."""
-    _not_implemented(6, "experiment report")
+    from rag_lab.experiment import load_run, render_report_markdown, render_report_table
+
+    if fmt not in {"table", "markdown"}:
+        console.print(f"[red]error:[/red] --format must be table|markdown, got {fmt!r}")
+        raise typer.Exit(code=1)
+
+    try:
+        _config, results = load_run(run_id)
+    except LookupError as exc:
+        console.print(f"[red]error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    if fmt == "markdown":
+        print(render_report_markdown(results))
+    else:
+        render_report_table(results, console)
 
 
 @experiment_app.command("compare")
 def experiment_compare(run_ids: Annotated[str, typer.Option("--run-ids")]) -> None:
     """Compare two or more runs."""
-    _not_implemented(6, "experiment compare")
+    from rag_lab.experiment import compare_runs, render_compare_table
+
+    ids = [r.strip() for r in run_ids.split(",") if r.strip()]
+    if len(ids) < 2:
+        console.print("[red]error:[/red] --run-ids needs at least two comma-separated run ids")
+        raise typer.Exit(code=1)
+
+    try:
+        comparison = compare_runs(ids)
+    except LookupError as exc:
+        console.print(f"[red]error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    render_compare_table(ids, comparison, console)
 
 
 @experiment_app.command("failures")
 def experiment_failures(
     run_id: Annotated[str, typer.Option("--run-id")],
+    config_idx: Annotated[int, typer.Option("--config-idx")] = 0,
     n: Annotated[int, typer.Option("--n")] = 20,
 ) -> None:
     """Dump the worst-performing queries with retrieved chunks and gold spans."""
-    _not_implemented(6, "experiment failures")
+    from rag_lab.experiment import render_failures, worst_failures
+
+    try:
+        cell, _result, worst = worst_failures(run_id, config_idx, n)
+    except (LookupError, ValueError) as exc:
+        console.print(f"[red]error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    render_failures(cell, worst, console)
 
 
 @agent_app.command("route")

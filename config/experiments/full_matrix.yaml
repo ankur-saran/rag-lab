@@ -1,0 +1,32 @@
+# The real strategy matrix (plan §Phase 6, Step 6.3). Targets real corpora and
+# a real generated eval set, so it isn't exercisable by automated tests until
+# Phase 5 ships one -- until then, `experiment run` against this config will
+# report every pair excluded for any corpus lacking a real
+# artifacts/evalset/<corpus>.jsonl (a real corpus/chunk set matched against
+# the fixture eval set describes disjoint document universes -- see
+# runner.py's `cell_fully_excluded` warning). api_docs is the exception: see
+# `scripts/build_api_docs_evalset.py`, the hand-authored eval set Phase 6 uses
+# in place of Phase 5 for its own AC-6.
+name: full_matrix
+corpora: [api_docs, contracts, filings]
+seed: 42
+k: 10
+matrix:
+  chunker:
+    - {name: fixed, params: {chunk_tokens: 512, overlap_tokens: 64}}
+    - {name: recursive, params: {chunk_tokens: 512, overlap_tokens: 64}}
+    - {name: markdown, params: {max_tokens: 768, prepend_heading_path: true}}
+    - {name: sentence_window, params: {window_size: 3}}
+  embedder:
+    - {name: bge-small, params: {}}
+    - {name: bge-small, params: {truncate_dim: 256}}
+    - {name: minilm, params: {}}
+  retriever:
+    - {name: dense, params: {}}
+    - {name: bm25, params: {}}
+    - {name: hybrid, params: {k_rrf: 60}}
+exclude:
+  # BM25 ignores the embedder, so don't run it three times -- one bm25 cell
+  # per chunker survives, piggybacking on the plain bge-small index.
+  - {retriever: bm25, embedder: {name: bge-small, params: {truncate_dim: 256}}}
+  - {retriever: bm25, embedder: {name: minilm}}

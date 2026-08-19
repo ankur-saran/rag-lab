@@ -3,7 +3,7 @@
 name: smoke
 _nohash: [description]
 description: Minimal matrix used by CI and by `make verify-phase-6`.
-corpora: [sample]
+corpora: [api_docs, contracts]
 seed: 42
 k: 10
 matrix:
