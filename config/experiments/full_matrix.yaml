@@ -8,7 +8,7 @@
 # `scripts/build_api_docs_evalset.py`, the hand-authored eval set Phase 6 uses
 # in place of Phase 5 for its own AC-6.
 name: full_matrix
-corpora: [api_docs, contracts, filings]
+corpora: [api_docs, contracts, filings, transcripts]
 seed: 42
 k: 10
 matrix:
@@ -17,6 +17,13 @@ matrix:
     - {name: recursive, params: {chunk_tokens: 512, overlap_tokens: 64}}
     - {name: markdown, params: {max_tokens: 768, prepend_heading_path: true}}
     - {name: sentence_window, params: {window_size: 3}}
+    # Phase 7. `corpora:` scopes each to the corpus it was validated on --
+    # semantic is expected to *lose* on api_docs and win on transcripts (both
+    # results are worth showing); table_summary needs filings' real tables.
+    # Without this allow-list these would silently run (3-5x cost, or a real
+    # LLM call per table) against every corpus above, not just these.
+    - {name: semantic, params: {embedder: bge-small}, corpora: [transcripts, api_docs]}
+    - {name: table_summary, params: {}, corpora: [filings]}
   embedder:
     - {name: bge-small, params: {}}
     - {name: bge-small, params: {truncate_dim: 256}}

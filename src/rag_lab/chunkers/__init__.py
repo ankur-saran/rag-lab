@@ -1,5 +1,6 @@
-"""Chunking strategies (Phase 2 baselines; Phase 7 adds `semantic` and
-`table_summary` to the same registry).
+"""Chunking strategies (Phase 2 baselines `fixed`/`recursive`/`markdown`/
+`sentence_window`; Phase 7 adds `semantic` and `table_summary` to the same
+registry).
 
 ``REGISTRY`` maps a chunker name to an instance implementing the ``Chunker``
 protocol, mirroring ``loaders.REGISTRY``'s extension-keyed dispatch. ``run_chunker``
@@ -19,7 +20,9 @@ from rag_lab.chunkers.fixed import FixedChunker
 from rag_lab.chunkers.hierarchy import OrphanChildError, assign_parents
 from rag_lab.chunkers.markdown_chunker import MarkdownChunker
 from rag_lab.chunkers.recursive import RecursiveChunker
+from rag_lab.chunkers.semantic import SemanticChunker
 from rag_lab.chunkers.sentence_window import SentenceWindowChunker
+from rag_lab.chunkers.table_summary import TableSummaryChunker
 from rag_lab.corpus import list_documents_by_corpus
 from rag_lab.ids import make_chunk_set_id
 from rag_lab.jsonl import read_jsonl, write_jsonl
@@ -31,6 +34,8 @@ REGISTRY: dict[str, Chunker] = {
     "recursive": RecursiveChunker(),
     "markdown": MarkdownChunker(),
     "sentence_window": SentenceWindowChunker(),
+    "semantic": SemanticChunker(),
+    "table_summary": TableSummaryChunker(),
 }
 
 

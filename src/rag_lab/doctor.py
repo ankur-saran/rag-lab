@@ -167,7 +167,7 @@ def run_checks() -> list[Check]:
         Check(
             "anthropic_api_key",
             "ok" if has_key else "warn",
-            "set" if has_key else "not set — needed for Phases 5 and 8 (or use --mock-llm)",
+            "set" if has_key else "not set — needed for Phases 5, 7 and 8 (or use --mock-llm)",
         )
     )
 

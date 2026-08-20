@@ -1,7 +1,7 @@
 PY ?= python
 PIP ?= $(PY) -m pip
 
-.PHONY: help install fixtures fixtures-index doctor test lint format clean verify-phase-0 verify-phase-1 verify-phase-2 verify-phase-3 verify-phase-4 verify-phase-6
+.PHONY: help install fixtures fixtures-index doctor test lint format clean verify-phase-0 verify-phase-1 verify-phase-2 verify-phase-3 verify-phase-4 verify-phase-6 verify-phase-7
 
 help:
 	@echo "install         install the package with core + dev extras"
@@ -16,6 +16,7 @@ help:
 	@echo "verify-phase-3  full Phase 3 acceptance run"
 	@echo "verify-phase-4  full Phase 4 acceptance run"
 	@echo "verify-phase-6  full Phase 6 acceptance run"
+	@echo "verify-phase-7  full Phase 7 acceptance run"
 
 install:
 	$(PIP) install -e ".[core,dev]"
@@ -194,3 +195,29 @@ verify-phase-6:
 	@echo "==> tests"
 	@$(PY) -m pytest tests/test_phase_0.py tests/test_phase_1.py tests/test_phase_2.py tests/test_phase_3.py tests/test_phase_4.py tests/test_phase_6.py -q
 	@echo "PHASE 6 OK"
+
+# Phase 7 acceptance: needs `embed` for a real embedder (AC-3's topic-shift
+# test cannot be satisfied by the dependency-free HashEmbedder -- it disclaims
+# semantic meaning by design) -- `agents` is deliberately NOT required here,
+# since --mock-llm never imports anthropic. Builds the real transcripts and
+# filings corpora, runs `semantic` on transcripts and `table_summary
+# --mock-llm` on filings so both chunkers are exercised for real, then the
+# cumulative test suite.
+verify-phase-7:
+	@echo "==> installing (core + dev + embed)"
+	@$(PIP) install -e ".[core,dev,embed]" -q
+	@echo "==> checking fixture determinism (core + index + parent/child fixtures)"
+	@$(PY) scripts/build_fixtures.py --check
+	@$(PY) scripts/build_index_fixture.py --check
+	@echo "==> building transcripts and filings"
+	@$(PY) -m rag_lab.cli corpus build --corpus transcripts
+	@$(PY) -m rag_lab.cli corpus build --corpus filings
+	@echo "==> semantic chunker on transcripts (expected to win here; loses on api_docs)"
+	@$(PY) -m rag_lab.cli chunk run --corpus transcripts --chunker semantic
+	@echo "==> table_summary chunker on filings, via --mock-llm (no API key needed)"
+	@$(PY) -m rag_lab.cli chunk run --corpus filings --chunker table_summary --mock-llm
+	@echo "==> doctor"
+	@$(PY) -m rag_lab.cli doctor
+	@echo "==> tests"
+	@$(PY) -m pytest tests/test_phase_0.py tests/test_phase_1.py tests/test_phase_2.py tests/test_phase_3.py tests/test_phase_4.py tests/test_phase_6.py tests/test_phase_7.py -q
+	@echo "PHASE 7 OK"

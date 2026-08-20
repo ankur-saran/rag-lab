@@ -233,6 +233,7 @@ def chunk_run(
     params: Annotated[list[str] | None, typer.Option("--params")] = None,
     role: Annotated[str, typer.Option("--role")] = "standalone",
     parent_chunk_set: Annotated[str | None, typer.Option("--parent-chunk-set")] = None,
+    mock_llm: Annotated[bool, typer.Option("--mock-llm")] = False,
 ) -> None:
     """Chunk a corpus into artifacts/chunks/<chunk_set_id>.jsonl.
 
@@ -240,6 +241,11 @@ def chunk_run(
     Phase 4's ``parent_doc`` retriever needs (plan §4.7). A child set's
     ``--parent-chunk-set`` is folded into the hashed params so two child sets
     built against different parents never collide on the same chunk_set_id.
+
+    ``--mock-llm`` (Phase 7's ``table_summary`` only) makes no network call and
+    never imports ``anthropic``; it sets the ``mock_llm`` chunker param, which
+    is hashed into the chunk_set_id like any other param -- a mock run and a
+    real run produce different summary text and must never share a cache entry.
 
     Delegates the actual build (and its caching) to
     ``chunkers.build_chunk_set`` -- the same function Phase 6's experiment
@@ -265,8 +271,13 @@ def chunk_run(
             f"available: {', '.join(sorted(REGISTRY))}"
         )
         raise typer.Exit(code=1)
+    if mock_llm and chunker != "table_summary":
+        console.print("[red]error:[/red] --mock-llm only applies to --chunker table_summary")
+        raise typer.Exit(code=1)
 
     overrides = parse_overrides(params)
+    if mock_llm:
+        overrides["mock_llm"] = True
 
     try:
         chunk_set_id, all_chunks, _cache_hit = build_chunk_set(

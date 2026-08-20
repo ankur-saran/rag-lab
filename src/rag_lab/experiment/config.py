@@ -36,11 +36,21 @@ class MatrixComponentSpec(BaseModel):
 
     Named to avoid colliding with ``retrievers.base.RetrieverSpec``, which is
     a different thing (a retriever's own fixed identity, not a matrix entry).
+
+    ``corpora`` is an optional allow-list (``None`` = unrestricted, matching
+    every corpus in the experiment's own ``corpora:`` list) -- what Phase 7's
+    ``semantic``/``table_summary`` entries need to stay scoped to the corpora
+    they were validated on (a 3-5x-cost or LLM-calling chunker silently
+    running against every corpus is a real cost risk, not just noise). A
+    first-class allow-list here, checked before cell expansion, rather than
+    the only mechanism this class had before -- ``ExcludeRule.corpus``, a
+    denylist that would need one line per *disallowed* corpus.
     """
 
     model_config = ConfigDict(extra="forbid")
     name: str
     params: dict[str, Any] = Field(default_factory=dict)
+    corpora: list[str] | None = None
 
 
 class MatrixSpec(BaseModel):
@@ -131,9 +141,17 @@ def _rule_matches(
     return True
 
 
+def _corpora_allowed(component: MatrixComponentSpec, corpus: str) -> bool:
+    """``component.corpora is None`` means unrestricted -- matches every
+    corpus in the experiment's own ``corpora:`` list, preserving today's
+    behaviour for every matrix entry that doesn't set it."""
+    return component.corpora is None or corpus in component.corpora
+
+
 def expand_cells(config: ExperimentConfig) -> list[Cell]:
     """Cartesian product of ``corpora x matrix.chunker x matrix.embedder x
-    matrix.retriever``, with ``exclude`` rules applied. On the documented
+    matrix.retriever``, with each component's own ``corpora`` allow-list
+    applied first and ``exclude`` rules applied after. On the documented
     ``full_matrix.yaml`` example this cuts a naive 4x3x3 by roughly a third.
 
     Deterministic and I/O-free, so the same config always expands to the same
@@ -143,8 +161,14 @@ def expand_cells(config: ExperimentConfig) -> list[Cell]:
     cells: list[Cell] = []
     for corpus in config.corpora:
         for chunker in config.matrix.chunker:
+            if not _corpora_allowed(chunker, corpus):
+                continue
             for embedder in config.matrix.embedder:
+                if not _corpora_allowed(embedder, corpus):
+                    continue
                 for retriever in config.matrix.retriever:
+                    if not _corpora_allowed(retriever, corpus):
+                        continue
                     if any(
                         _rule_matches(rule, corpus, chunker, embedder, retriever)
                         for rule in config.exclude

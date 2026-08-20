@@ -87,6 +87,13 @@ class ChunkSetStats:
     doc_count: int = 0
     fence_total: int = 0
     table_total: int = 0
+    # Total wall-clock (seconds) spent inside `.chunk()` across every distinct
+    # document in this set -- only `semantic` (Phase 7) sets this, in
+    # `meta["chunk_build_seconds"]`, duplicated across a document's own chunks
+    # (deduped by doc_id below, so it's summed once per document, not once per
+    # chunk). `None` for chunk sets that never set it -- the four baseline
+    # chunkers and `table_summary`.
+    chunk_build_seconds: float | None = None
 
 
 def _boundaries_by_doc(chunks: list[Chunk]) -> dict[str, set[int]]:
@@ -143,6 +150,12 @@ def compute_chunk_stats(chunks: list[Chunk], docs_by_id: dict[str, Document]) ->
 
     orphan_count = sum(1 for c in chunks if c.token_count < ORPHAN_TOKEN_THRESHOLD)
 
+    per_doc_build_seconds: dict[str, float] = {}
+    for c in chunks:
+        if "chunk_build_seconds" in c.meta:
+            per_doc_build_seconds[c.doc_id] = c.meta["chunk_build_seconds"]
+    chunk_build_seconds = sum(per_doc_build_seconds.values()) if per_doc_build_seconds else None
+
     return ChunkSetStats(
         chunk_set_id=chunks[0].chunk_set_id,
         corpus=chunks[0].corpus,
@@ -162,6 +175,7 @@ def compute_chunk_stats(chunks: list[Chunk], docs_by_id: dict[str, Document]) ->
         doc_count=len(boundaries_by_doc),
         fence_total=total_fences,
         table_total=total_tables,
+        chunk_build_seconds=chunk_build_seconds,
     )
 
 
@@ -185,6 +199,11 @@ def render_chunk_stats_table(stats: ChunkSetStats, console: Console) -> None:
         ("mean heading-path depth", f"{stats.mean_heading_path_depth:.2f}"),
         (f"orphan rate (< {ORPHAN_TOKEN_THRESHOLD} tok)", f"{stats.orphan_rate:.1%}"),
     ]
+    if stats.chunk_build_seconds is not None:
+        # Only `semantic` sets this (an embedding pass to decide boundaries,
+        # roughly 3-5x the cost of `recursive` -- plan §Phase 7, Step 7.1).
+        # Omitted for every chunker that never records it.
+        rows.append(("chunk build time (embedding pass)", f"{stats.chunk_build_seconds:.2f}s"))
     for name, value in rows:
         table.add_row(name, value)
     console.print(table)
