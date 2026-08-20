@@ -98,8 +98,11 @@ def test_all_chunkers_run_against_fixture_documents(name):  # AC-1
         assert all(c.chunker == name for c in chunks)
 
 
-def test_registry_exposes_exactly_the_four_baseline_chunkers():
-    assert available_chunkers() == sorted(CHUNKER_NAMES)
+def test_registry_exposes_at_least_the_four_baseline_chunkers():
+    # Not an exact-set check: Phase 7 adds `semantic`/`table_summary` to the
+    # same registry (see chunkers/__init__.py), so this only asserts Phase
+    # 2's own four are present, not that they're the only entries.
+    assert set(CHUNKER_NAMES) <= set(available_chunkers())
 
 
 def test_run_chunker_rejects_unknown_name():
