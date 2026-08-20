@@ -212,11 +212,20 @@ def test_table_summary_offset_and_coverage_invariants_hold_everywhere(corpus):
 # --------------------------------------------------------------------------- #
 
 
+def _stable_dump(c: Chunk) -> dict:
+    """`c.model_dump()` with `meta["chunk_build_seconds"]` stripped -- that
+    field is real wall-clock and legitimately differs between two otherwise
+    identical runs, which is correct behaviour, not a determinism bug."""
+    d = c.model_dump()
+    d["meta"] = {k: v for k, v in d["meta"].items() if k != "chunk_build_seconds"}
+    return d
+
+
 def test_semantic_determinism_same_params_same_output(fast_semantic_embedder):
     doc = _real_documents("transcripts")[0]
     a = run_chunker("semantic", doc, {})
     b = run_chunker("semantic", doc, {})
-    assert [c.model_dump_json() for c in a] == [c.model_dump_json() for c in b]
+    assert [_stable_dump(c) for c in a] == [_stable_dump(c) for c in b]
     assert a[0].chunk_set_id == b[0].chunk_set_id
 
 
