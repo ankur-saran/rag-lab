@@ -38,7 +38,7 @@ from rag_lab.embedders.fixture import HashEmbedder
 from rag_lab.experiment.config import ExperimentConfig, expand_cells
 from rag_lab.ids import make_chunk_set_id
 from rag_lab.jsonl import read_jsonl
-from rag_lab.llm import call_llm, cached_llm_call
+from rag_lab.llm import cached_llm_call, call_llm
 from rag_lab.markup import find_tables
 from rag_lab.paths import artifact_path, fixture_path
 from rag_lab.schemas import Chunk, Document

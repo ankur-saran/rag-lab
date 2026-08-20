@@ -118,7 +118,7 @@ def _summarize_table(
     mock_llm: bool,
     encoding: str,
 ) -> str:
-    from rag_lab.llm import call_llm, cached_llm_call
+    from rag_lab.llm import cached_llm_call, call_llm
 
     prompt_table_text = _truncate_for_prompt(table_text, max_table_tokens, encoding)
     prompt = _SUMMARY_PROMPT.format(table_text=prompt_table_text, max_tokens=summary_max_tokens)
