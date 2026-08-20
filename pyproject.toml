@@ -11,7 +11,9 @@ requires-python = ">=3.10"
 license = { text = "MIT" }
 
 # Base dependencies == the "core" tier. Deliberately light: no torch, no chromadb.
-# Phases 1, 2 and 5 (with --mock-llm) run on this alone.
+# Phases 1, 2 and 5 (with --mock-llm) run on this alone, as does Phase 7's
+# `table_summary` chunker with --mock-llm (it lazily imports `anthropic` only
+# on the real, non-mock path -- see llm.py).
 dependencies = [
     "pydantic>=2.5",
     "typer>=0.12",

@@ -3,7 +3,7 @@
 A framework for showcasing chunking and embedding strategies, with an agentic
 optimization layer.
 
-**Status: Phase 6 complete (Phase 5 still stubbed).** The skeleton, artifact
+**Status: Phase 7 complete (Phase 5 still stubbed).** The skeleton, artifact
 schemas, config system, CLI surface and health check are in place (Phase 0).
 Five corpora — `api_docs`, `contracts`, `filings`, `transcripts`, `catalog` —
 are curated and load cleanly into normalized `Document` artifacts, with stats
@@ -22,8 +22,14 @@ nDCG with bootstrap confidence intervals — `markdown` beats `fixed` on real
 `api_docs` recall@5 outside the CI (Phase 6). Phase 5 (the LLM-based eval-set
 generator) is still a stub; Phase 6 uses a hand-authored eval set in its
 place (`scripts/build_api_docs_evalset.py`) — see "Two things worth knowing"
-below. Every later phase's subcommands are registered and stubbed, so
-`rag-lab --help` is an accurate map of the system.
+below. Two advanced chunkers round out the registry: `semantic` cuts on
+embedding-distance breakpoints between sentences (expected to lose on
+structured `api_docs` and win on headingless `transcripts` — both results are
+shown, not just the win) and `table_summary` pulls GFM tables out of `filings`
+into their own chunk with an LLM-generated summary in `embed_text`, raw table
+in `text`, cached by table content and mockable with `--mock-llm` for
+credential-free testing (Phase 7). Every later phase's subcommands are
+registered and stubbed, so `rag-lab --help` is an accurate map of the system.
 
 ---
 
@@ -51,10 +57,17 @@ python scripts/build_api_docs_evalset.py            # hand-authored eval set (Ph
 rag-lab experiment run --config config/experiments/smoke.yaml
 rag-lab experiment report --run-id <run_id>          # metrics table with bootstrap CIs
 make verify-phase-6                      # full Phase 6 acceptance run
+
+rag-lab chunk run --corpus transcripts --chunker semantic       # needs .[embed]
+rag-lab chunk run --corpus filings --chunker table_summary --mock-llm  # no API key needed
+make verify-phase-7                      # full Phase 7 acceptance run
 ```
 
 `core` is deliberately light — no PyTorch, no ChromaDB. Phases 1, 2 and 5
-(with `--mock-llm`) run on it alone. Install `.[embed]` for Phases 3, 4 and 6.
+(with `--mock-llm`) run on it alone, as does `table_summary` with
+`--mock-llm`. Install `.[embed]` for Phases 3, 4, 6 and `semantic`. Install
+`.[agents]` (or set `ANTHROPIC_API_KEY`) for `table_summary` without
+`--mock-llm`.
 
 ## The independence contract
 
@@ -95,8 +108,12 @@ src/rag_lab/
   loaders/       Loader protocol, MarkdownLoader, TextLoader (Phase 1)
   corpus.py      corpus stats, document lookup, stats rendering (Phase 1)
   chunkers/      Chunker protocol, finalize_chunks, fixed/recursive/markdown/
-                 sentence_window, name registry, build_chunk_set (Phase 2)
+                 sentence_window, name registry, build_chunk_set (Phase 2);
+                 semantic, table_summary (Phase 7)
   chunks.py      chunk-set stats, lookup, boundary/diff rendering (Phase 2)
+  llm.py         one-shot LLM call + on-disk response cache, --mock-llm
+                 support (Phase 7) -- not agents/, which is Phase 8's
+                 tool-use loop
   embedders/     Embedder protocol, SentenceTransformerEmbedder, model
                  registry (asymmetric query/doc prefixes) (Phase 3)
   stores/        VectorStore protocol, ChromaStore (Phase 3)
@@ -113,7 +130,7 @@ src/rag_lab/
 tests/           one test module per phase
 ```
 
-## Two things worth knowing before extending this
+## Three things worth knowing before extending this
 
 **`Chunk.text` vs `Chunk.embed_text`.** One field is returned to the consumer,
 the other is embedded. Heading-path prefixing, asymmetric query/document
@@ -144,6 +161,16 @@ shared fixture bundle. Mixing a *real* chunk set with a still-fixture eval
 set for the same corpus describes two disjoint document universes and
 resolves every pair's gold to zero chunks — `experiment run` logs this as
 `cell_fully_excluded` rather than silently reporting empty metrics.
+
+**A runtime mode that changes output data is a hashed param, not a bypass.**
+`table_summary`'s `mock_llm` looked at first like a pure test-mode switch that
+shouldn't affect `chunk_set_id` — but a mock run and a real run produce
+materially different `embed_text` (placeholder vs. real summary), so hashing
+it in (default `False`, like any other chunker param) is what stops a real
+`chunk run` after an earlier `--mock-llm` run from silently reading back
+cached mock output as a legitimate cache hit. The tell: if two configs can
+produce different bytes on disk, they need different IDs — the same rule
+`role`/`parent_chunk_set_id` follow (§4.7).
 
 ## Caching
 
@@ -186,15 +213,19 @@ rag-lab experiment report --run-id <id>                             # table with
 rag-lab experiment report --run-id <id> --format markdown
 rag-lab experiment compare --run-ids <a>,<b>
 rag-lab experiment failures --run-id <id> --config-idx 0 --n 20     # worst queries for one cell
+
+rag-lab chunk run --corpus transcripts --chunker semantic
+rag-lab chunk run --corpus filings --chunker table_summary                 # real LLM calls
+rag-lab chunk run --corpus filings --chunker table_summary --mock-llm      # no API key needed
 ```
 
-Remaining stubs (Phase 5, 7, 8, 9, 10) exit 1 and name the phase that will implement them.
+Remaining stubs (Phase 5, 8, 9, 10) exit 1 and name the phase that will implement them.
 
 ## Requirements
 
 Python 3.10+. No GPU, Docker, database or search service. An `ANTHROPIC_API_KEY`
-is needed for Phases 5 and 8 only, and both support `--mock-llm` for testing
-without one.
+is needed for Phases 5, 7 (`table_summary`) and 8 only, and all three support
+`--mock-llm` for testing without one.
 
 ## License
 
