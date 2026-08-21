@@ -45,6 +45,13 @@ NAMED_RETRIEVERS: dict[str, RetrieverSpec] = {
         default_params={"base": "dense", "overlap_threshold": 0.5, "fanout": 3},
         is_wrapper=True,
     ),
+    # Plan §Phase 8, Step 8.1. Not `is_wrapper` -- it doesn't recursively
+    # build a base retriever from *this* index the way hybrid/parent_doc/
+    # sentence_window do; it ignores this index entirely and surveys every
+    # other index for the same corpus at query time instead.
+    "agent_router": RetrieverSpec(
+        default_params={"model": "claude-sonnet-5", "max_steps": 5, "mock": False}
+    ),
 }
 
 
@@ -132,6 +139,17 @@ def build_retriever(
             base,
             overlap_threshold=float(params["overlap_threshold"]),
             fanout=int(params["fanout"]),
+        )
+
+    if name == "agent_router":
+        from rag_lab.retrievers.agent_router import AgentRouterRetriever
+
+        return AgentRouterRetriever(
+            manifest,
+            store,
+            model=str(params["model"]),
+            max_steps=int(params["max_steps"]),
+            mock=bool(params["mock"]),
         )
 
     raise AssertionError(f"unreachable: retriever {name!r} declared but not implemented")
