@@ -204,6 +204,7 @@ class TestIndexManifestSchema:
         manifest = IndexManifest(
             index_id="cs__bge-small__deadbeef",
             chunk_set_id="cs",
+            corpus="api_docs",
             embedder="bge-small",
             embedder_params={"model_name": "x"},
             vector_count=5,

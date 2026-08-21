@@ -153,7 +153,7 @@ def _evaluate_cell(cell: Cell, run_id: str) -> RunResult:
         cell.retriever, cell.retriever_params, manifest=manifest, store=store
     )
     chunk_set = load_chunk_set(cell.chunk_set_id)
-    pairs = load_evalset(cell.corpus)
+    pairs = load_evalset(cell.corpus, split=cell.eval_split)
 
     traces: list[QueryTrace] = []
     latencies: list[float] = []
@@ -271,6 +271,7 @@ def _evaluate_cell(cell: Cell, run_id: str) -> RunResult:
             "chunk_set_id": cell.chunk_set_id,
             "index_id": cell.index_id,
             "cell_id": cell.cell_id,
+            "eval_split": cell.eval_split,
         },
         corpus=cell.corpus,
         metrics=aggregate,

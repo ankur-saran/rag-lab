@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field
@@ -91,6 +91,13 @@ class ExperimentConfig(BaseModel):
     k: int = 10
     matrix: MatrixSpec
     exclude: list[ExcludeRule] = Field(default_factory=list)
+    # `None` (default) = every split, exactly today's behavior for every
+    # config written before Phase 8 -- `full_matrix.yaml`/`smoke.yaml` never
+    # set this. Phase 8's optimizer is the one caller that sets it: "dev"
+    # while iterating, "test" once for the final report (plan §Phase 8, Step
+    # 8.0.3), threaded through `Cell` into `_evaluate_cell`'s
+    # `load_evalset(cell.corpus, split=cell.eval_split)` call below.
+    eval_split: Literal["train", "dev", "test"] | None = None
 
 
 def load_experiment_config(path: str | Path) -> ExperimentConfig:
@@ -118,6 +125,7 @@ class Cell:
     chunk_set_id: str
     index_id: str
     cell_id: str
+    eval_split: Literal["train", "dev", "test"] | None = None
 
 
 def _rule_matches(
@@ -203,6 +211,7 @@ def expand_cells(config: ExperimentConfig) -> list[Cell]:
                             chunk_set_id=chunk_set_id,
                             index_id=index_id,
                             cell_id=cell_id,
+                            eval_split=config.eval_split,
                         )
                     )
     return cells

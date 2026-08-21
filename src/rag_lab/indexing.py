@@ -163,9 +163,22 @@ def list_manifests(corpus: str | None = None) -> list[IndexManifest]:
     ``<corpus>__<chunker>__<hash>__<embedder>__<hash>`` naming convention),
     reading ``IndexManifest.corpus`` instead, same reasoning as
     ``build_index``'s own ``chunks[0].corpus`` read.
+
+    A manifest that fails to load or validate (a stale directory from before
+    a schema change, a partially-written index, an unrelated directory
+    someone dropped under ``artifacts/indexes/``) is skipped with a warning
+    rather than crashing the whole listing -- one bad neighbor must not take
+    down every other index, and Phase 8's router calls this as a tool inside
+    an agent loop where a hard crash is a much worse failure mode than one
+    missing entry.
     """
     indexes_dir = artifacts_dir() / "indexes"
-    manifests = [load_manifest(indexes_dir / index_id) for index_id in available_index_ids()]
+    manifests: list[IndexManifest] = []
+    for index_id in available_index_ids():
+        try:
+            manifests.append(load_manifest(indexes_dir / index_id))
+        except Exception as exc:
+            log.warning("index_manifest_unreadable_skipping", index_id=index_id, error=str(exc))
     if corpus is not None:
         manifests = [m for m in manifests if m.corpus == corpus]
     return manifests
