@@ -665,25 +665,87 @@ def experiment_failures(
 def agent_route(
     query: Annotated[str, typer.Option("--query")],
     corpus: Annotated[str, typer.Option("--corpus")],
+    k: Annotated[int, typer.Option("--k")] = 5,
     explain: Annotated[bool, typer.Option("--explain")] = False,
+    model: Annotated[str, typer.Option("--model")] = "claude-sonnet-5",
+    max_steps: Annotated[int, typer.Option("--max-steps")] = 5,
+    mock_llm: Annotated[bool, typer.Option("--mock-llm")] = False,
 ) -> None:
     """Pick a retrieval strategy for one query and justify the choice."""
-    _not_implemented(8, "agent route")
+    from rag_lab.agents.router import render_decision, route_query
+    from rag_lab.indexing import render_search_results
+
+    try:
+        decision, results = route_query(
+            query, corpus, k, model=model, max_steps=max_steps, mock=mock_llm
+        )
+    except (LookupError, FileNotFoundError, ValueError) as exc:
+        console.print(f"[red]error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    render_decision(decision, console, explain=explain)
+    if not results:
+        console.print("[yellow]no results[/yellow]")
+    else:
+        render_search_results(query, results, console)
 
 
 @agent_app.command("optimize")
 def agent_optimize(
     corpus: Annotated[str, typer.Option("--corpus")],
     max_iterations: Annotated[int, typer.Option("--max-iterations")] = 6,
+    k: Annotated[int, typer.Option("--k")] = 10,
+    model: Annotated[str, typer.Option("--model")] = "claude-sonnet-5",
+    max_steps_per_iteration: Annotated[int, typer.Option("--max-steps-per-iteration")] = 4,
+    budget_usd: Annotated[float | None, typer.Option("--budget-usd")] = None,
+    max_tokens: Annotated[int | None, typer.Option("--max-tokens")] = None,
+    max_wall_clock: Annotated[float | None, typer.Option("--max-wall-clock")] = None,
+    mock_llm: Annotated[bool, typer.Option("--mock-llm")] = False,
 ) -> None:
     """Propose, evaluate, diagnose, mutate — on the dev split only."""
-    _not_implemented(8, "agent optimize")
+    from rag_lab.agents.optimizer import optimize, render_trace
+
+    try:
+        run_id, trace = optimize(
+            corpus,
+            k=k,
+            max_iterations=max_iterations,
+            max_steps_per_iteration=max_steps_per_iteration,
+            model=model,
+            mock=mock_llm,
+            max_tokens=max_tokens,
+            max_wall_clock_s=max_wall_clock,
+            budget_usd=budget_usd,
+        )
+    except (LookupError, FileNotFoundError, ValueError) as exc:
+        console.print(f"[red]error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(f"[green]ok[/green]  {run_id}: {len(trace)} trace entrie(s)")
+    if not trace:
+        console.print(
+            "[yellow]budget exhausted before any iteration completed[/yellow] "
+            "-- raise --budget-usd/--max-tokens/--max-wall-clock"
+        )
+        raise typer.Exit(code=0)
+    render_trace(trace, console)
 
 
 @agent_app.command("trace")
 def agent_trace(run_id: Annotated[str, typer.Option("--run-id")]) -> None:
     """Print an optimizer reasoning trace."""
-    _not_implemented(8, "agent trace")
+    from rag_lab.agents.optimizer import load_trace, render_trace
+
+    try:
+        trace = load_trace(run_id)
+    except LookupError as exc:
+        console.print(f"[red]error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    if not trace:
+        console.print("[yellow]trace is empty[/yellow] -- optimizer stopped before any iteration completed")
+        raise typer.Exit(code=0)
+    render_trace(trace, console)
 
 
 def entrypoint() -> None:

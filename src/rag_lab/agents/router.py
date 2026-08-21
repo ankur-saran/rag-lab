@@ -22,6 +22,10 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
+from rich.console import Console
+from rich.markup import escape
+from rich.table import Table
+
 from rag_lab import indexing
 from rag_lab.agents.runtime import (
     Budget,
@@ -323,4 +327,25 @@ def route_query(
     return decision, labeled
 
 
-__all__ = ["DEFAULT_MAX_STEPS", "DEFAULT_MODEL", "route_query"]
+def render_decision(decision: RouterDecision, console: Console, *, explain: bool = False) -> None:
+    console.print(
+        f"[green]chosen[/green]  retriever={escape(decision.chosen_retriever)}  "
+        f"index={escape(decision.chosen_index_id)}"
+    )
+    console.print(f"[bold]justification:[/bold] {escape(decision.justification)}")
+    console.print(
+        f"tokens: {decision.total_input_tokens} in / {decision.total_output_tokens} out   "
+        f"latency: {decision.latency_ms:.0f}ms"
+    )
+    if explain:
+        table = Table(title="router steps", title_style="bold", show_lines=True)
+        table.add_column("step", justify="right")
+        table.add_column("text", overflow="fold")
+        table.add_column("tool calls", overflow="fold")
+        for s in decision.steps:
+            calls = "; ".join(f"{c['name']}({c['arguments']})" for c in s.get("tool_calls", []))
+            table.add_row(str(s["step"]), escape(s.get("text", "")), escape(calls))
+        console.print(table)
+
+
+__all__ = ["DEFAULT_MAX_STEPS", "DEFAULT_MODEL", "render_decision", "route_query"]

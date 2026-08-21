@@ -1,7 +1,7 @@
 PY ?= python
 PIP ?= $(PY) -m pip
 
-.PHONY: help install fixtures fixtures-index doctor test lint format clean verify-phase-0 verify-phase-1 verify-phase-2 verify-phase-3 verify-phase-4 verify-phase-6 verify-phase-7
+.PHONY: help install fixtures fixtures-index doctor test lint format clean verify-phase-0 verify-phase-1 verify-phase-2 verify-phase-3 verify-phase-4 verify-phase-6 verify-phase-7 verify-phase-8
 
 help:
 	@echo "install         install the package with core + dev extras"
@@ -17,6 +17,7 @@ help:
 	@echo "verify-phase-4  full Phase 4 acceptance run"
 	@echo "verify-phase-6  full Phase 6 acceptance run"
 	@echo "verify-phase-7  full Phase 7 acceptance run"
+	@echo "verify-phase-8  full Phase 8 acceptance run"
 
 install:
 	$(PIP) install -e ".[core,dev]"
@@ -221,3 +222,39 @@ verify-phase-7:
 	@echo "==> tests"
 	@$(PY) -m pytest tests/test_phase_0.py tests/test_phase_1.py tests/test_phase_2.py tests/test_phase_3.py tests/test_phase_4.py tests/test_phase_6.py tests/test_phase_7.py -q
 	@echo "PHASE 7 OK"
+
+# Phase 8 acceptance: both agents run for real via `--mock-llm` (no API key,
+# no network -- `agents/runtime.py`'s mock model callers never import
+# `anthropic`) against a real api_docs corpus + hand-authored eval set (same
+# as verify-phase-6 -- Phase 5's real generator still isn't built) and two
+# real chunk-set/index pairs to route across. `agents` IS installed here
+# (unlike verify-phase-7): Phase 8's real, non-mock path needs it, and
+# `doctor` checking it present is part of this phase's own acceptance
+# criteria surface.
+verify-phase-8:
+	@echo "==> installing (core + dev + embed + agents)"
+	@$(PIP) install -e ".[core,dev,embed,agents]" -q
+	@echo "==> checking fixture determinism (core + index + parent/child fixtures)"
+	@$(PY) scripts/build_fixtures.py --check
+	@$(PY) scripts/build_index_fixture.py --check
+	@echo "==> building the real api_docs corpus and its hand-authored eval set"
+	@$(PY) -m rag_lab.cli corpus build --corpus api_docs
+	@$(PY) scripts/build_api_docs_evalset.py
+	@echo "==> building two chunk sets + indexes to route across"
+	@FIXED_CS=$$($(PY) -m rag_lab.cli chunk run --corpus api_docs --chunker fixed | grep -oE 'api_docs__fixed__[a-f0-9]+'); \
+	RECURSIVE_CS=$$($(PY) -m rag_lab.cli chunk run --corpus api_docs --chunker recursive | grep -oE 'api_docs__recursive__[a-f0-9]+'); \
+	$(PY) -m rag_lab.cli index build --chunk-set $$FIXED_CS --embedder bge-small; \
+	$(PY) -m rag_lab.cli index build --chunk-set $$RECURSIVE_CS --embedder bge-small; \
+	echo "==> agent route --mock-llm (AC-1, AC-2: identifier -> bm25, conceptual -> dense)"; \
+	$(PY) -m rag_lab.cli agent route --query "What does the error code IDEMPOTENCY_KEY_CONFLICT mean?" --corpus api_docs --mock-llm --explain; \
+	$(PY) -m rag_lab.cli agent route --query "How do I paginate through a list of results?" --corpus api_docs --mock-llm; \
+	echo "==> agent optimize --mock-llm (AC-1, AC-3, AC-4)"; \
+	RUN_ID=$$($(PY) -m rag_lab.cli agent optimize --corpus api_docs --max-iterations 3 --mock-llm | grep -oE 'optimizer-api_docs__[0-9TZ]+' | tail -1); \
+	$(PY) -m rag_lab.cli agent trace --run-id $$RUN_ID; \
+	echo "==> agent optimize with an artificially low budget (AC-5: graceful termination)"; \
+	$(PY) -m rag_lab.cli agent optimize --corpus api_docs --max-iterations 6 --max-tokens 1 --mock-llm
+	@echo "==> doctor"
+	@$(PY) -m rag_lab.cli doctor
+	@echo "==> tests"
+	@$(PY) -m pytest tests/test_phase_0.py tests/test_phase_1.py tests/test_phase_2.py tests/test_phase_3.py tests/test_phase_4.py tests/test_phase_6.py tests/test_phase_7.py tests/test_phase_8.py -q
+	@echo "PHASE 8 OK"

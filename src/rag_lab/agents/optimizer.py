@@ -24,6 +24,9 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import structlog
+from rich.console import Console
+from rich.markup import escape
+from rich.table import Table
 
 from rag_lab.agents.runtime import (
     Budget,
@@ -548,6 +551,35 @@ def optimize(
     return optimizer_run_id, trace
 
 
+def render_trace(trace: list[OptimizerTraceEntry], console: Console, *, metric: str = DEFAULT_METRIC) -> None:
+    table = Table(title="optimizer trace", title_style="bold", show_lines=True)
+    table.add_column("iter", justify="right")
+    table.add_column("split")
+    table.add_column("config", overflow="fold")
+    table.add_column(metric, justify="right")
+    table.add_column("hypothesis", overflow="fold")
+    table.add_column("diagnosis -> mutation", overflow="fold")
+
+    for e in trace:
+        cfg = f"{e.config.get('chunker')}/{e.config.get('embedder')}/{e.config.get('retriever')}"
+        metric_val = e.metrics.get(metric)
+        metric_str = f"{metric_val:.3f}" if metric_val is not None else "-"
+        diag = f"{e.diagnosis} -> {e.mutation}" if e.mutation else e.diagnosis
+        table.add_row(str(e.iteration), e.split, escape(cfg), metric_str, escape(e.hypothesis), escape(diag))
+    console.print(table)
+
+    dev_entries = [e for e in trace if e.split == "dev"]
+    test_entries = [e for e in trace if e.split == "test"]
+    if dev_entries and test_entries:
+        best_dev = max(dev_entries, key=lambda e: e.metrics.get(metric, float("-inf")))
+        winner_cfg = f"{best_dev.config.get('chunker')}/{best_dev.config.get('embedder')}/{best_dev.config.get('retriever')}"
+        console.print(
+            f"[bold]winner[/bold]: iteration {best_dev.iteration} ({escape(winner_cfg)}) -- "
+            f"dev {metric}={best_dev.metrics.get(metric, 0.0):.3f}, "
+            f"test {metric}={test_entries[-1].metrics.get(metric, 0.0):.3f}"
+        )
+
+
 __all__ = [
     "DEFAULT_MAX_ITERATIONS",
     "DEFAULT_MAX_STEPS_PER_ITERATION",
@@ -555,4 +587,5 @@ __all__ = [
     "DEFAULT_MODEL",
     "load_trace",
     "optimize",
+    "render_trace",
 ]
