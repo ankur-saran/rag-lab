@@ -114,6 +114,11 @@ class IndexManifest(_Base):
 
     index_id: str
     chunk_set_id: str
+    corpus: str  # plan §Phase 8, Step 8.0.1 -- read from Chunk.corpus at build time,
+    # never parsed from chunk_set_id's "<corpus>__<chunker>__<hash>" naming
+    # convention. Required (no default) deliberately: a manifest written before
+    # this field existed fails validation, which `indexing.build_index`'s
+    # existing cache-hit try/except already treats as a rebuild, not a crash.
     embedder: str
     embedder_params: dict[str, Any] = Field(default_factory=dict)
     vector_count: int
@@ -218,6 +223,50 @@ class RunResult(_Base):
 
 
 # --------------------------------------------------------------------------- #
+# Phase 8
+# --------------------------------------------------------------------------- #
+
+
+class RouterDecision(_Base):
+    """Output of the router agent (plan §Phase 8, Step 8.1): which index and
+    retriever it chose for one query, and the tool-call steps that led there.
+    Not a JSONL artifact kind (no cross-phase consumer reads it back), so it's
+    not registered in ``ARTIFACT_MODELS`` -- ``agent route`` prints it, and
+    ``AgentRouterRetriever`` reads its ``chosen_*`` fields to label the
+    ``ScoredChunk``s it returns."""
+
+    query: str
+    corpus: str
+    chosen_index_id: str
+    chosen_retriever: str
+    chosen_retriever_params: dict[str, Any] = Field(default_factory=dict)
+    justification: str
+    steps: list[dict[str, Any]] = Field(default_factory=list)  # tool call + result, in order
+    total_input_tokens: int = 0
+    total_output_tokens: int = 0
+    latency_ms: float = 0.0
+
+
+class OptimizerTraceEntry(_Base):
+    """One iteration of the optimizer agent's propose/run/diagnose/mutate loop
+    (plan §Phase 8, Step 8.2). Written to
+    ``artifacts/results/<run_id>/optimizer_trace.jsonl`` -- the trace is the
+    deliverable, more interesting than the winning config."""
+
+    iteration: int
+    hypothesis: str
+    config: dict[str, Any]
+    run_id: str  # the Phase 6 run_id this iteration's run_experiment call produced
+    split: Literal["dev", "test"] = "dev"
+    metrics: dict[str, float] = Field(default_factory=dict)
+    diagnosis: str = ""
+    mutation: str = ""
+    input_tokens: int = 0
+    output_tokens: int = 0
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# --------------------------------------------------------------------------- #
 # Registry — used by paths.resolve_artifact and by the fixture generator
 # --------------------------------------------------------------------------- #
 
@@ -237,7 +286,9 @@ __all__ = [
     "Document",
     "EvalPair",
     "IndexManifest",
+    "OptimizerTraceEntry",
     "QueryTrace",
+    "RouterDecision",
     "RunResult",
     "ScoredChunk",
 ]

@@ -63,6 +63,10 @@ def build(out_dir: Path) -> IndexManifest:
     manifest = IndexManifest(
         index_id=make_index_id(SAMPLE_CHUNK_SET_ID, EMBEDDER_NAME, embedder.default_params),
         chunk_set_id=SAMPLE_CHUNK_SET_ID,
+        # Same "sample" sentinel as chunk_set_id, for the same reason: the
+        # underlying chunks span multiple real corpora, so there is no single
+        # real corpus to attach (plan §Phase 8, Step 8.0.1's `corpus` field).
+        corpus=SAMPLE_CHUNK_SET_ID,
         embedder=EMBEDDER_NAME,
         embedder_params=dict(embedder.default_params),
         vector_count=len(chunks),

@@ -110,6 +110,7 @@ def build_index(
     manifest = IndexManifest(
         index_id=index_id,
         chunk_set_id=chunk_set_id,
+        corpus=chunks[0].corpus,  # authoritative -- chunks are already loaded above
         embedder=embedder_name,
         embedder_params=embedder_params,
         vector_count=len(chunks),
@@ -153,9 +154,21 @@ def available_index_ids() -> list[str]:
     return sorted(p.parent.name for p in indexes_dir.glob("*/manifest.json"))
 
 
-def list_manifests() -> list[IndexManifest]:
+def list_manifests(corpus: str | None = None) -> list[IndexManifest]:
+    """Every built index's manifest, optionally filtered to one corpus.
+
+    This *is* the router agent's ``list_available_indexes(corpus)`` tool
+    (plan §Phase 8, Step 8.0.2) -- no separate function needed. Filtering
+    happens after loading each manifest (not by parsing ``index_id``'s
+    ``<corpus>__<chunker>__<hash>__<embedder>__<hash>`` naming convention),
+    reading ``IndexManifest.corpus`` instead, same reasoning as
+    ``build_index``'s own ``chunks[0].corpus`` read.
+    """
     indexes_dir = artifacts_dir() / "indexes"
-    return [load_manifest(indexes_dir / index_id) for index_id in available_index_ids()]
+    manifests = [load_manifest(indexes_dir / index_id) for index_id in available_index_ids()]
+    if corpus is not None:
+        manifests = [m for m in manifests if m.corpus == corpus]
+    return manifests
 
 
 # --------------------------------------------------------------------------- #
