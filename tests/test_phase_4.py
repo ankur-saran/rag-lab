@@ -382,8 +382,10 @@ class TestNoOpReranker:
 
 class TestRetrieverRegistry:
     def test_available_retrievers_matches_the_five_implemented_names(self):
+        # `agent_router` is Phase 8's addition (plan §Phase 8, Step 8.1) --
+        # the five names this test is named after are Phase 4's own.
         assert available_retrievers() == sorted(
-            ["dense", "bm25", "hybrid", "parent_doc", "sentence_window"]
+            ["dense", "bm25", "hybrid", "parent_doc", "sentence_window", "agent_router"]
         )
         assert "auto_merging" not in available_retrievers()  # deliberately deferred
 
