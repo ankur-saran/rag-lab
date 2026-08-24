@@ -90,12 +90,16 @@ class Budget:
 @dataclass(frozen=True)
 class AgentLoopResult:
     final_text: str
-    transcript: list[dict[str, Any]]  # every request/response pair -- feeds --explain and the optimizer trace
+    transcript: list[
+        dict[str, Any]
+    ]  # every request/response pair -- feeds --explain and the optimizer trace
     tool_results: list[dict[str, Any]]  # every tool call + its outcome, in order
     total_input_tokens: int
     total_output_tokens: int
     steps_used: int
-    stopped_reason: str  # "end_turn" | "max_steps" | "budget_exceeded" | "repeated_invalid_tool_call"
+    stopped_reason: (
+        str  # "end_turn" | "max_steps" | "budget_exceeded" | "repeated_invalid_tool_call"
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -212,7 +216,10 @@ def run_agent_loop(
         if budget.max_wall_clock_s is not None and elapsed >= budget.max_wall_clock_s:
             stopped_reason = "budget_exceeded"
             break
-        if budget.max_total_tokens is not None and (total_input + total_output) >= budget.max_total_tokens:
+        if (
+            budget.max_total_tokens is not None
+            and (total_input + total_output) >= budget.max_total_tokens
+        ):
             stopped_reason = "budget_exceeded"
             break
         if budget.max_usd is not None:
@@ -346,7 +353,9 @@ def anthropic_model_caller(model: str, max_tokens: int = 1024) -> ModelCaller:
             if block_type == "text":
                 text_parts.append(block.text)
             elif block_type == "tool_use":
-                tool_calls.append(ToolCall(id=block.id, name=block.name, arguments=dict(block.input)))
+                tool_calls.append(
+                    ToolCall(id=block.id, name=block.name, arguments=dict(block.input))
+                )
         usage = getattr(response, "usage", None)
         return ModelTurn(
             text="".join(text_parts),

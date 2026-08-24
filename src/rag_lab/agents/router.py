@@ -38,8 +38,8 @@ from rag_lab.agents.runtime import (
     run_agent_loop,
 )
 from rag_lab.corpus import compute_corpus_stats, list_documents_by_corpus
-from rag_lab.retrievers import available_retrievers, truncate_and_rank
 from rag_lab.retrieval import run_retriever
+from rag_lab.retrievers import available_retrievers, truncate_and_rank
 from rag_lab.schemas import IndexManifest, RouterDecision, ScoredChunk
 
 DEFAULT_MODEL = "claude-sonnet-5"
@@ -75,7 +75,9 @@ def _build_tools(session: _RouteSession) -> list[Tool]:
     def _list_indexes(args: dict[str, Any]) -> list[dict[str, Any]]:
         target = args.get("corpus", session.corpus)
         manifests = [
-            m for m in indexing.list_manifests(corpus=target) if m.index_id != session.exclude_index_id
+            m
+            for m in indexing.list_manifests(corpus=target)
+            if m.index_id != session.exclude_index_id
         ]
         return [
             {
@@ -149,24 +151,26 @@ def _build_tools(session: _RouteSession) -> list[Tool]:
                     "chunker": c.chunker,
                     "index_id": m.index_id,
                 }
-        raise ToolError(f"chunk_id {chunk_id!r} not found in any index for corpus {session.corpus!r}")
+        raise ToolError(
+            f"chunk_id {chunk_id!r} not found in any index for corpus {session.corpus!r}"
+        )
 
     return [
         Tool(
             name="list_available_indexes",
-            description="List every built index for a corpus (index_id, chunk_set_id, embedder, size).",
+            description="List every built index for a corpus (index_id, chunk_set_id, embedder).",
             input_schema={"type": "object", "properties": {"corpus": {"type": "string"}}},
             handler=_list_indexes,
         ),
         Tool(
             name="get_corpus_stats",
-            description="Token distribution, heading density, code blocks, tables, language mix for a corpus.",
+            description="Token distribution, heading density, code/table counts, language mix.",
             input_schema={"type": "object", "properties": {"corpus": {"type": "string"}}},
             handler=_get_corpus_stats,
         ),
         Tool(
             name="retrieve",
-            description="Run one retriever against one index for the query and return scored results.",
+            description="Run one retriever against one index for the query; return scored results.",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -194,7 +198,8 @@ def _build_tools(session: _RouteSession) -> list[Tool]:
 
 def _system_prompt(corpus: str, k: int, candidates: list[IndexManifest]) -> str:
     index_lines = "\n".join(
-        f"- {m.index_id} (chunk_set={m.chunk_set_id}, embedder={m.embedder}, vectors={m.vector_count})"
+        f"- {m.index_id} (chunk_set={m.chunk_set_id}, embedder={m.embedder}, "
+        f"vectors={m.vector_count})"
         for m in candidates
     )
     return (
@@ -291,7 +296,9 @@ def route_query(
 
     session = _RouteSession(corpus=corpus, query=query, k=k, exclude_index_id=exclude_index_id)
     tools = _build_tools(session)
-    caller = _mock_model_caller(session, candidates) if mock else anthropic_model_caller(model=model)
+    caller = (
+        _mock_model_caller(session, candidates) if mock else anthropic_model_caller(model=model)
+    )
 
     started = time.monotonic()
     result = run_agent_loop(

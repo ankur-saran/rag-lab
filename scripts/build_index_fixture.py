@@ -125,8 +125,10 @@ def main() -> int:
                 f"regenerated={regenerated_manifest.vector_count}"
             )
         if committed_manifest.dim != regenerated_manifest.dim:
-            mismatches.append(f"dim differs: committed={committed_manifest.dim} "
-                               f"regenerated={regenerated_manifest.dim}")
+            mismatches.append(
+                f"dim differs: committed={committed_manifest.dim} "
+                f"regenerated={regenerated_manifest.dim}"
+            )
         if committed_ids != regenerated_ids:
             mismatches.append("stored chunk_ids differ")
 

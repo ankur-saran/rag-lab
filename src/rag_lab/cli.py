@@ -743,7 +743,9 @@ def agent_trace(run_id: Annotated[str, typer.Option("--run-id")]) -> None:
         raise typer.Exit(code=1) from exc
 
     if not trace:
-        console.print("[yellow]trace is empty[/yellow] -- optimizer stopped before any iteration completed")
+        console.print(
+            "[yellow]trace is empty[/yellow] -- optimizer stopped before any iteration completed"
+        )
         raise typer.Exit(code=0)
     render_trace(trace, console)
 

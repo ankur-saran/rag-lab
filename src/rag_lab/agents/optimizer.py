@@ -329,7 +329,9 @@ def _mock_model_caller(iteration: int) -> ModelCaller:
             }
             return ModelTurn(
                 text="",
-                tool_calls=[ToolCall(id=f"mock-run-{iteration}", name="run_experiment", arguments=args)],
+                tool_calls=[
+                    ToolCall(id=f"mock-run-{iteration}", name="run_experiment", arguments=args)
+                ],
                 input_tokens=220,
                 output_tokens=70,
             )
@@ -430,7 +432,9 @@ def _run_final_test_eval(
         k=k,
         eval_split="test",
         matrix=MatrixSpec(
-            chunker=[MatrixComponentSpec(name=cfg["chunker"], params=cfg.get("chunker_params", {}))],
+            chunker=[
+                MatrixComponentSpec(name=cfg["chunker"], params=cfg.get("chunker_params", {}))
+            ],
             embedder=[
                 MatrixComponentSpec(name=cfg["embedder"], params=cfg.get("embedder_params", {}))
             ],
@@ -469,7 +473,9 @@ def load_trace(optimizer_run_id: str) -> list[OptimizerTraceEntry]:
 
     path = run_dir(optimizer_run_id) / "optimizer_trace.jsonl"
     if not path.exists():
-        raise LookupError(f"no optimizer trace found for run_id {optimizer_run_id!r} (checked {path})")
+        raise LookupError(
+            f"no optimizer trace found for run_id {optimizer_run_id!r} (checked {path})"
+        )
     return read_jsonl(path, OptimizerTraceEntry)
 
 
@@ -526,8 +532,12 @@ def optimize(
 
         inner_budget = Budget(
             max_steps=max_steps_per_iteration,
-            max_total_tokens=None if max_tokens is None else max(0, max_tokens - total_input - total_output),
-            max_wall_clock_s=None if max_wall_clock_s is None else max(0.0, max_wall_clock_s - elapsed),
+            max_total_tokens=None
+            if max_tokens is None
+            else max(0, max_tokens - total_input - total_output),
+            max_wall_clock_s=None
+            if max_wall_clock_s is None
+            else max(0.0, max_wall_clock_s - elapsed),
             max_usd=None if budget_usd is None else max(0.0, budget_usd - spent_usd),
         )
         entry, in_tok, out_tok = _run_iteration(
@@ -551,7 +561,9 @@ def optimize(
     return optimizer_run_id, trace
 
 
-def render_trace(trace: list[OptimizerTraceEntry], console: Console, *, metric: str = DEFAULT_METRIC) -> None:
+def render_trace(
+    trace: list[OptimizerTraceEntry], console: Console, *, metric: str = DEFAULT_METRIC
+) -> None:
     table = Table(title="optimizer trace", title_style="bold", show_lines=True)
     table.add_column("iter", justify="right")
     table.add_column("split")
@@ -565,14 +577,19 @@ def render_trace(trace: list[OptimizerTraceEntry], console: Console, *, metric: 
         metric_val = e.metrics.get(metric)
         metric_str = f"{metric_val:.3f}" if metric_val is not None else "-"
         diag = f"{e.diagnosis} -> {e.mutation}" if e.mutation else e.diagnosis
-        table.add_row(str(e.iteration), e.split, escape(cfg), metric_str, escape(e.hypothesis), escape(diag))
+        table.add_row(
+            str(e.iteration), e.split, escape(cfg), metric_str, escape(e.hypothesis), escape(diag)
+        )
     console.print(table)
 
     dev_entries = [e for e in trace if e.split == "dev"]
     test_entries = [e for e in trace if e.split == "test"]
     if dev_entries and test_entries:
         best_dev = max(dev_entries, key=lambda e: e.metrics.get(metric, float("-inf")))
-        winner_cfg = f"{best_dev.config.get('chunker')}/{best_dev.config.get('embedder')}/{best_dev.config.get('retriever')}"
+        winner_cfg = (
+            f"{best_dev.config.get('chunker')}/{best_dev.config.get('embedder')}/"
+            f"{best_dev.config.get('retriever')}"
+        )
         console.print(
             f"[bold]winner[/bold]: iteration {best_dev.iteration} ({escape(winner_cfg)}) -- "
             f"dev {metric}={best_dev.metrics.get(metric, 0.0):.3f}, "

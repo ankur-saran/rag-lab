@@ -136,7 +136,9 @@ def test_loop_executes_a_valid_tool_call_and_feeds_the_result_back():
 
     result = run_agent_loop(system="s", user_message="go", tools=[tool], model_caller=caller)
     assert calls == [{"text": "hi"}]
-    assert result.tool_results == [{"tool": "echo", "arguments": {"text": "hi"}, "is_error": False, "result": {"echoed": "hi"}}]
+    assert result.tool_results == [
+        {"tool": "echo", "arguments": {"text": "hi"}, "is_error": False, "result": {"echoed": "hi"}}
+    ]
 
 
 def test_loop_stops_after_two_consecutive_invalid_tool_calls():  # AC-1
@@ -147,7 +149,11 @@ def test_loop_stops_after_two_consecutive_invalid_tool_calls():  # AC-1
         return ModelTurn(text="", tool_calls=[ToolCall(id="x", name="echo", arguments={})])
 
     result = run_agent_loop(
-        system="s", user_message="go", tools=[tool], model_caller=caller, budget=Budget(max_steps=10)
+        system="s",
+        user_message="go",
+        tools=[tool],
+        model_caller=caller,
+        budget=Budget(max_steps=10),
     )
     assert result.stopped_reason == "repeated_invalid_tool_call"
     assert result.steps_used == 2  # stops after the SECOND consecutive failure, not the first
@@ -169,7 +175,11 @@ def test_a_single_invalid_call_does_not_stop_the_loop_if_followed_by_a_valid_one
         return ModelTurn(text="done", tool_calls=[])
 
     result = run_agent_loop(
-        system="s", user_message="go", tools=[tool], model_caller=caller, budget=Budget(max_steps=10)
+        system="s",
+        user_message="go",
+        tools=[tool],
+        model_caller=caller,
+        budget=Budget(max_steps=10),
     )
     assert result.stopped_reason == "end_turn"
     assert calls == [{"text": "ok"}]
@@ -179,7 +189,9 @@ def test_loop_stops_at_max_steps_when_the_model_never_stops_calling_tools():  # 
     tool = _echo_tool([])
 
     def caller(messages, system, tools):
-        return ModelTurn(text="", tool_calls=[ToolCall(id="1", name="echo", arguments={"text": "x"})])
+        return ModelTurn(
+            text="", tool_calls=[ToolCall(id="1", name="echo", arguments={"text": "x"})]
+        )
 
     result = run_agent_loop(
         system="s", user_message="go", tools=[tool], model_caller=caller, budget=Budget(max_steps=3)
@@ -192,7 +204,9 @@ def test_tool_error_becomes_an_error_tool_result_not_a_crash():
     def handler(args):
         raise ToolError("bad input")
 
-    tool = Tool(name="fail", description="always fails", input_schema={"type": "object"}, handler=handler)
+    tool = Tool(
+        name="fail", description="always fails", input_schema={"type": "object"}, handler=handler
+    )
     step = {"n": 0}
 
     def caller(messages, system, tools):
@@ -242,10 +256,15 @@ class TestBudget:
 
     def test_max_wall_clock_zero_stops_before_the_first_call(self):
         def caller(messages, system, tools):
-            raise AssertionError("model_caller must never be invoked when the wall clock budget is already spent")
+            raise AssertionError(
+                "model_caller must never be invoked when the wall clock budget is already spent"
+            )
 
         result = run_agent_loop(
-            system="s", user_message="go", tools=[], model_caller=caller,
+            system="s",
+            user_message="go",
+            tools=[],
+            model_caller=caller,
             budget=Budget(max_steps=5, max_wall_clock_s=0.0),
         )
         assert result.stopped_reason == "budget_exceeded"
@@ -263,7 +282,11 @@ class TestBudget:
             )
 
         result = run_agent_loop(
-            system="s", user_message="go", tools=[tool], model_caller=caller, model="claude-sonnet-5",
+            system="s",
+            user_message="go",
+            tools=[tool],
+            model_caller=caller,
+            model="claude-sonnet-5",
             budget=Budget(max_steps=10, max_usd=1.0),
         )
         assert result.stopped_reason == "budget_exceeded"
@@ -522,7 +545,9 @@ class TestRouterMock:
         )
         assert decision.chosen_retriever == "dense"
 
-    def test_ac6_no_baseline_indexes_raises_a_clear_error(self, fast_embedder, isolated_artifacts):  # AC-6
+    def test_ac6_no_baseline_indexes_raises_a_clear_error(
+        self, fast_embedder, isolated_artifacts
+    ):  # AC-6
         from rag_lab.agents.router import route_query
 
         build_result = runner.invoke(app, ["corpus", "build", "--corpus", "api_docs"])
@@ -600,10 +625,14 @@ class TestOptimizerMock:
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(real_path, target)
 
-    def test_ac1_ac3_optimizer_runs_and_produces_a_valid_trace(self, api_docs_with_evalset):  # AC-1, AC-3
+    def test_ac1_ac3_optimizer_runs_and_produces_a_valid_trace(
+        self, api_docs_with_evalset
+    ):  # AC-1, AC-3
         from rag_lab.agents.optimizer import optimize
 
-        run_id, trace = optimize("api_docs", k=10, max_iterations=3, max_steps_per_iteration=4, mock=True)
+        run_id, trace = optimize(
+            "api_docs", k=10, max_iterations=3, max_steps_per_iteration=4, mock=True
+        )
         dev_entries = [e for e in trace if e.split == "dev"]
         test_entries = [e for e in trace if e.split == "test"]
         assert len(dev_entries) == 3
@@ -619,7 +648,9 @@ class TestOptimizerMock:
             assert e.config["embedder"] in available_embedders()
             assert e.config["retriever"] in available_retrievers()
 
-    def test_ac4_test_split_is_evaluated_separately_from_dev(self, api_docs_with_evalset):  # AC-4 (mechanism)
+    def test_ac4_test_split_is_evaluated_separately_from_dev(
+        self, api_docs_with_evalset
+    ):  # AC-4 (mechanism)
         """This asserts the *mechanism* AC-4 depends on -- the winner is
         chosen by dev metrics and then re-evaluated, once, on a genuinely
         different (test) split -- not that quality improves, which a
@@ -629,14 +660,18 @@ class TestOptimizerMock:
         """
         from rag_lab.agents.optimizer import DEFAULT_METRIC, optimize
 
-        run_id, trace = optimize("api_docs", k=10, max_iterations=3, max_steps_per_iteration=4, mock=True)
+        run_id, trace = optimize(
+            "api_docs", k=10, max_iterations=3, max_steps_per_iteration=4, mock=True
+        )
         dev_entries = [e for e in trace if e.split == "dev"]
         test_entries = [e for e in trace if e.split == "test"]
         best_dev = max(dev_entries, key=lambda e: e.metrics.get(DEFAULT_METRIC, float("-inf")))
         assert test_entries[0].config["chunker"] == best_dev.config["chunker"]
         assert test_entries[0].run_id != best_dev.run_id  # a genuinely separate run_experiment call
 
-    def test_ac5_budget_cap_terminates_gracefully_with_partial_trace(self, api_docs_with_evalset):  # AC-5
+    def test_ac5_budget_cap_terminates_gracefully_with_partial_trace(
+        self, api_docs_with_evalset
+    ):  # AC-5
         from rag_lab.agents.optimizer import optimize
 
         run_id, trace = optimize(
@@ -658,7 +693,8 @@ class TestOptimizerMock:
 
     def test_cli_agent_optimize_and_trace_mock_llm(self, api_docs_with_evalset):  # AC-1
         r = runner.invoke(
-            app, ["agent", "optimize", "--corpus", "api_docs", "--max-iterations", "2", "--mock-llm"]
+            app,
+            ["agent", "optimize", "--corpus", "api_docs", "--max-iterations", "2", "--mock-llm"],
         )
         assert r.exit_code == 0, r.output
         run_id = re.search(r"ok\s+(\S+):", r.output).group(1)
@@ -722,12 +758,16 @@ def test_ac4_real_embeddings_final_config_is_competitive():  # AC-4
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
 
-    run_id, trace = optimize("api_docs", k=10, max_iterations=3, max_steps_per_iteration=4, mock=True)
+    run_id, trace = optimize(
+        "api_docs", k=10, max_iterations=3, max_steps_per_iteration=4, mock=True
+    )
     dev_entries = [e for e in trace if e.split == "dev"]
     test_entries = [e for e in trace if e.split == "test"]
     best_dev = max(dev_entries, key=lambda e: e.metrics.get(DEFAULT_METRIC, float("-inf")))
     assert test_entries[0].metrics.get(DEFAULT_METRIC, 0.0) >= 0.0  # ran and produced a real number
-    assert best_dev.metrics.get(DEFAULT_METRIC, -1.0) >= dev_entries[0].metrics.get(DEFAULT_METRIC, -1.0)
+    assert best_dev.metrics.get(DEFAULT_METRIC, -1.0) >= dev_entries[0].metrics.get(
+        DEFAULT_METRIC, -1.0
+    )
 
 
 # --------------------------------------------------------------------------- #
