@@ -22,11 +22,19 @@ import json
 import re
 import sys
 import tempfile
+from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from rag_lab.chunkers.hierarchy import assign_parents  # noqa: E402
+from rag_lab.experiment.config import (  # noqa: E402
+    Cell,
+    ExperimentConfig,
+    MatrixComponentSpec,
+    MatrixSpec,
+    expand_cells,
+)
 from rag_lab.ids import (  # noqa: E402
     chunker_signature,
     make_chunk_id,
@@ -42,6 +50,7 @@ from rag_lab.schemas import (  # noqa: E402
     ChunkRole,
     Document,
     EvalPair,
+    OptimizerTraceEntry,
     QueryTrace,
     RunResult,
 )
@@ -258,7 +267,46 @@ def build_evalset(docs: list[Document], chunks: list[Chunk]) -> list[EvalPair]:
     return pairs
 
 
-def build_sample_run(pairs: list[EvalPair]) -> RunResult:
+def _sample_experiment_config() -> ExperimentConfig:
+    """The one-cell matrix behind the ``sample_run`` fixture.
+
+    Uses real, registered component names (``fixed``/``bge-small``/``bm25``),
+    never the ``FIXTURE_CHUNKER``/``"fixture"`` sentinels used above for
+    chunks/evalset -- ``experiment.report.load_run``'s ``expand_cells`` call
+    resolves component names through ``chunkers``/``embedders``/``retrievers``
+    ``resolve_params``, all three of which raise on an unregistered name (the
+    sentinels are deliberately absent from those registries; see
+    ``embedders/registry.py``'s own docstring). All three registries' own
+    ``resolve_params`` is a pure dict-merge against registry metadata --
+    importing them, and calling this, never touches ``sentence_transformers``/
+    ``rank_bm25``, so this script stays ``core``-only.
+    """
+    return ExperimentConfig(
+        name="sample_run",
+        corpora=["sample"],
+        seed=42,
+        k=5,
+        matrix=MatrixSpec(
+            chunker=[MatrixComponentSpec(name="fixed", params={})],
+            embedder=[MatrixComponentSpec(name="bge-small", params={})],
+            retriever=[MatrixComponentSpec(name="bm25", params={})],
+        ),
+    )
+
+
+def build_sample_run(pairs: list[EvalPair]) -> tuple[Cell, RunResult]:
+    """The single cell of ``_sample_experiment_config()``, plus its
+    ``RunResult``. Returning the ``Cell`` lets ``write_all`` place the result
+    at the real ``cells/<cell_id>.json`` path ``experiment.runner``/``report``
+    use, alongside ``matrix.json`` -- matching the layout ``report.load_run``
+    expects from every real run, so Phase 9's results dashboard can load this
+    fixture through the exact same code path as a real run (plan §Phase 9).
+    """
+    config = _sample_experiment_config()
+    cells = expand_cells(config)
+    assert len(cells) == 1, f"expected exactly one cell from {config!r}, got {len(cells)}"
+    cell = cells[0]
+
     traces = [
         QueryTrace(
             query_id=p.query_id,
@@ -272,15 +320,109 @@ def build_sample_run(pairs: list[EvalPair]) -> RunResult:
         )
         for p in pairs
     ]
-    return RunResult(
+    result = RunResult(
         run_id="sample_run",
-        config={"chunker": FIXTURE_CHUNKER, "embedder": "fixture", "retriever": "fixture"},
+        config={
+            "corpus": cell.corpus,
+            "chunker": cell.chunker,
+            "chunker_params": cell.chunker_params,
+            "embedder": cell.embedder,
+            "embedder_params": cell.embedder_params,
+            "retriever": cell.retriever,
+            "retriever_params": cell.retriever_params,
+            "k": cell.k,
+            "chunk_set_id": cell.chunk_set_id,
+            "index_id": cell.index_id,
+            "cell_id": cell.cell_id,
+            "eval_split": cell.eval_split,
+        },
         corpus="sample",
         metrics={"recall@1": 1.0, "recall@5": 1.0, "mrr": 1.0, "ndcg@10": 1.0},
         per_query=traces,
         chunk_stats={"count": float(len(traces))},
         timings={"total_s": 0.0},
     )
+    return cell, result
+
+
+def build_sample_optimizer_trace() -> list[OptimizerTraceEntry]:
+    """A minimal, hand-authored optimizer trace (plan §Phase 9, Step 9.4).
+
+    ``agents.optimizer.load_trace`` has no fixture fallback of its own -- on a
+    clean checkout the optimizer-trace viewer would otherwise be permanently
+    blank, which defeats the point of a fixture-only demo path for the one
+    page most likely to be shown to an audience without stderr visible. Two
+    dev iterations (a real config change and a real metrics delta between
+    them) plus the final test-split entry, mirroring the shape
+    ``agents/optimizer.py::optimize`` produces for a real run.
+    """
+    pinned = datetime(2026, 1, 1)
+    base = {
+        "corpus": "sample",
+        "k": 5,
+        "embedder": "bge-small",
+        "embedder_params": {},
+        "retriever": "bm25",
+        "retriever_params": {},
+    }
+    iter0_config = {
+        **base,
+        "chunker": "fixed",
+        "chunker_params": {"chunk_tokens": 512, "overlap_tokens": 64},
+    }
+    iter1_config = {
+        **base,
+        "chunker": "recursive",
+        "chunker_params": {"chunk_tokens": 512, "overlap_tokens": 64},
+    }
+    return [
+        OptimizerTraceEntry(
+            iteration=0,
+            hypothesis="Start with a fixed-window baseline to establish a recall floor.",
+            config=iter0_config,
+            run_id="sample_run__opt_iter0",
+            split="dev",
+            metrics={"recall@5": 0.60, "mrr": 0.55},
+            diagnosis=(
+                "Fixed windows cut several clauses mid-sentence, splitting gold "
+                "spans across chunk boundaries."
+            ),
+            mutation="Switch chunker from fixed to recursive at the same token budget.",
+            input_tokens=812,
+            output_tokens=194,
+            created_at=pinned,
+        ),
+        OptimizerTraceEntry(
+            iteration=1,
+            hypothesis="Recursive splitting should keep clause boundaries intact.",
+            config=iter1_config,
+            run_id="sample_run__opt_iter1",
+            split="dev",
+            metrics={"recall@5": 0.75, "mrr": 0.68},
+            diagnosis=(
+                "Recall improved; remaining misses are short lookup queries near "
+                "document start, likely a chunk-size effect rather than a boundary "
+                "effect."
+            ),
+            mutation="",
+            input_tokens=798,
+            output_tokens=176,
+            created_at=pinned,
+        ),
+        OptimizerTraceEntry(
+            iteration=2,
+            hypothesis="Final test-split evaluation of iteration 1's winning config.",
+            config=iter1_config,
+            run_id="sample_run__opt_iter1",
+            split="test",
+            metrics={"recall@5": 0.74, "mrr": 0.66},
+            diagnosis="",
+            mutation="",
+            input_tokens=0,
+            output_tokens=0,
+            created_at=pinned,
+        ),
+    ]
 
 
 def verify(docs: list[Document], chunks: list[Chunk]) -> None:
@@ -326,17 +468,33 @@ def write_all(out: Path) -> dict[str, int]:
         "chunks_child": write_jsonl(out / "chunks" / "sample_child.jsonl", child_chunks),
     }
 
-    run = build_sample_run(pairs)
+    cell, run = build_sample_run(pairs)
     run_dir = out / "results" / "sample_run"
     run_dir.mkdir(parents=True, exist_ok=True)
+
+    matrix_payload = json.loads(_sample_experiment_config().model_dump_json())
+    (run_dir / "matrix.json").write_text(
+        json.dumps(matrix_payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+
     payload = json.loads(run.model_dump_json())
     payload["created_at"] = "2026-01-01T00:00:00"  # pinned, or --check always differs
-    (run_dir / "result.json").write_text(
-        json.dumps(payload, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-        newline="\n",  # pin LF; write_text's default translates \n -> os.linesep on Windows
+    serialized = (
+        json.dumps(payload, indent=2, sort_keys=True) + "\n"
     )
+    # write_text's default newline translates \n -> os.linesep on Windows; pin LF.
+    (run_dir / "result.json").write_text(serialized, encoding="utf-8", newline="\n")
+    cells_dir = run_dir / "cells"
+    cells_dir.mkdir(parents=True, exist_ok=True)
+    (cells_dir / f"{cell.cell_id}.json").write_text(serialized, encoding="utf-8", newline="\n")
     counts["results"] = 1
+
+    trace = build_sample_optimizer_trace()
+    counts["optimizer_trace"] = write_jsonl(
+        out / "results" / "sample_optimizer_run" / "optimizer_trace.jsonl", trace
+    )
     return counts
 
 
@@ -359,6 +517,7 @@ def main() -> int:
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
         write_all(tmp_path)
+        sample_cell_id = expand_cells(_sample_experiment_config())[0].cell_id
         mismatches = []
         for rel in (
             "documents/sample.jsonl",
@@ -366,7 +525,10 @@ def main() -> int:
             "evalset/sample.jsonl",
             "chunks/sample_parent.jsonl",
             "chunks/sample_child.jsonl",
+            "results/sample_run/matrix.json",
             "results/sample_run/result.json",
+            f"results/sample_run/cells/{sample_cell_id}.json",
+            "results/sample_optimizer_run/optimizer_trace.jsonl",
         ):
             committed, regenerated = OUT / rel, tmp_path / rel
             if not committed.exists():

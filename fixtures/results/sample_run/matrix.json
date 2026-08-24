@@ -1,0 +1,33 @@
+{
+  "corpora": [
+    "sample"
+  ],
+  "eval_split": null,
+  "exclude": [],
+  "k": 5,
+  "matrix": {
+    "chunker": [
+      {
+        "corpora": null,
+        "name": "fixed",
+        "params": {}
+      }
+    ],
+    "embedder": [
+      {
+        "corpora": null,
+        "name": "bge-small",
+        "params": {}
+      }
+    ],
+    "retriever": [
+      {
+        "corpora": null,
+        "name": "bm25",
+        "params": {}
+      }
+    ]
+  },
+  "name": "sample_run",
+  "seed": 42
+}
