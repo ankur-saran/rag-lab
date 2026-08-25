@@ -121,7 +121,8 @@ def test_optimizer_trace_degrades_gracefully_with_nothing_available(broken_fixtu
 
 
 def test_segment_document_reconstructs_document_text_exactly():  # AC-2
-    docs = {d.doc_id: d for d in read_jsonl(REPO_ROOT / "fixtures" / "documents" / "sample.jsonl", Document)}
+    documents_path = REPO_ROOT / "fixtures" / "documents" / "sample.jsonl"
+    docs = {d.doc_id: d for d in read_jsonl(documents_path, Document)}
     chunks = read_jsonl(REPO_ROOT / "fixtures" / "chunks" / "sample.jsonl", Chunk)
     by_doc: dict[str, list[Chunk]] = {}
     for c in chunks:

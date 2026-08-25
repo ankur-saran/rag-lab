@@ -13,6 +13,11 @@ import streamlit as st
 
 from rag_lab.app import data, optimizer_diff, ui
 
+
+def _config_str(config: dict) -> str:
+    return f"{config.get('chunker')}/{config.get('embedder')}/{config.get('retriever')}"
+
+
 st.title("🧪 Optimizer trace viewer")
 
 with ui.guarded("optimizer runs"):
@@ -36,7 +41,10 @@ dev_entries = [e for e in trace if e.split == "dev"]
 test_entries = [e for e in trace if e.split == "test"]
 
 all_metrics = sorted({m for e in trace for m in e.metrics})
-default_metric = "recall@5" if "recall@5" in all_metrics else (all_metrics[0] if all_metrics else None)
+if "recall@5" in all_metrics:
+    default_metric = "recall@5"
+else:
+    default_metric = all_metrics[0] if all_metrics else None
 
 st.subheader("Iteration timeline")
 if default_metric is None:
@@ -48,21 +56,26 @@ else:
             "iteration": e.iteration,
             "value": e.metrics.get(metric),
             "split": e.split,
-            "config": f"{e.config.get('chunker')}/{e.config.get('embedder')}/{e.config.get('retriever')}",
+            "config": _config_str(e.config),
         }
         for e in trace
         if metric in e.metrics
     ]
     if timeline_rows:
         fig = px.line(
-            timeline_rows, x="iteration", y="value", color="split", markers=True, hover_data=["config"],
+            timeline_rows,
+            x="iteration",
+            y="value",
+            color="split",
+            markers=True,
+            hover_data=["config"],
             labels={"value": metric},
         )
         st.plotly_chart(fig, use_container_width=True)
 
     if dev_entries and test_entries:
         best_dev = max(dev_entries, key=lambda e: e.metrics.get(metric, float("-inf")))
-        winner_cfg = f"{best_dev.config.get('chunker')}/{best_dev.config.get('embedder')}/{best_dev.config.get('retriever')}"
+        winner_cfg = _config_str(best_dev.config)
         st.success(
             f"**Winner**: iteration {best_dev.iteration} ({winner_cfg}) — "
             f"dev {metric}={best_dev.metrics.get(metric, 0.0):.3f}, "
@@ -76,7 +89,8 @@ for entry in trace:
     with st.expander(label):
         st.markdown(f"**Hypothesis:** {entry.hypothesis}")
 
-        config_diff = optimizer_diff.diff_config(prev_dev.config if prev_dev else None, entry.config)
+        prev_config = prev_dev.config if prev_dev else None
+        config_diff = optimizer_diff.diff_config(prev_config, entry.config)
         if config_diff:
             st.markdown("**Config diff vs. previous dev iteration:**")
             st.table(
@@ -89,16 +103,25 @@ for entry in trace:
         else:
             st.caption("No config change from the previous dev iteration.")
 
-        metrics_delta = optimizer_diff.diff_metrics(prev_dev.metrics if prev_dev else None, entry.metrics)
+        prev_metrics = prev_dev.metrics if prev_dev else None
+        metrics_delta = optimizer_diff.diff_metrics(prev_metrics, entry.metrics)
         if metrics_delta:
             st.markdown("**Metrics delta:**")
-            st.table({"metric": list(metrics_delta), "delta": [f"{v:+.3f}" for v in metrics_delta.values()]})
+            st.table(
+                {
+                    "metric": list(metrics_delta),
+                    "delta": [f"{v:+.3f}" for v in metrics_delta.values()],
+                }
+            )
 
         if entry.diagnosis:
             st.markdown(f"**Diagnosis:** {entry.diagnosis}")
         if entry.mutation:
             st.markdown(f"**Mutation:** {entry.mutation}")
-        st.caption(f"tokens: {entry.input_tokens} in / {entry.output_tokens} out · run_id: {entry.run_id}")
+        st.caption(
+            f"tokens: {entry.input_tokens} in / {entry.output_tokens} out · "
+            f"run_id: {entry.run_id}"
+        )
 
     if entry.split == "dev":
         prev_dev = entry
