@@ -84,9 +84,13 @@ if retrievers_present:
         if result is None:
             continue
         ci = data.metric_ci(result, metric_for_heatmap)
-        heat_rows.append({"chunker": cell.chunker, "embedder": cell.embedder, "value": ci[0] if ci else None})
+        heat_rows.append(
+            {"chunker": cell.chunker, "embedder": cell.embedder, "value": ci[0] if ci else None}
+        )
     if heat_rows:
-        pivot = pd.DataFrame(heat_rows).pivot_table(index="chunker", columns="embedder", values="value")
+        pivot = pd.DataFrame(heat_rows).pivot_table(
+            index="chunker", columns="embedder", values="value"
+        )
         fig = px.imshow(pivot, text_auto=".3f", aspect="auto", color_continuous_scale="Viridis")
         st.plotly_chart(fig, use_container_width=True)
     else:
@@ -110,7 +114,9 @@ for cell in cells:
             "recall@5": result.metrics.get("recall@5"),
         }
     )
-scatter_df = pd.DataFrame([r for r in scatter_rows if r["latency_p50"] is not None and r["recall@5"] is not None])
+scatter_df = pd.DataFrame(
+    [r for r in scatter_rows if r["latency_p50"] is not None and r["recall@5"] is not None]
+)
 if not scatter_df.empty:
     fig = px.scatter(
         scatter_df, x="latency_p50", y="recall@5", color="chunker", hover_name="label",
@@ -134,13 +140,17 @@ if cell_options:
         tagged = data.worst_failures(result, chosen_cell.corpus, n=None)
     tiers = sorted({tier for _, tier in tagged})
     picked_tiers = st.multiselect("Difficulty", tiers, default=tiers)
-    show_n = st.number_input("Show top N", min_value=1, max_value=max(1, len(tagged)), value=min(20, len(tagged)))
+    show_n = st.number_input(
+        "Show top N", min_value=1, max_value=max(1, len(tagged)), value=min(20, len(tagged))
+    )
     filtered = [(t, tier) for t, tier in tagged if tier in picked_tiers][: int(show_n)]
     table_rows = [
         {
             "difficulty": tier,
             "query": t.query,
-            "status": "excluded" if t.excluded else f"recall@5={t.metrics.get('recall@5', 0.0):.2f}",
+            "status": (
+                "excluded" if t.excluded else f"recall@5={t.metrics.get('recall@5', 0.0):.2f}"
+            ),
             "gold_chunks": ", ".join(t.gold_chunk_ids) or "(none)",
             "retrieved_top5": ", ".join(t.retrieved_chunk_ids[:5]) or "(none)",
         }
