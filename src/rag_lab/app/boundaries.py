@@ -92,4 +92,87 @@ def render_segments_html(doc_text: str, segments: list[Segment], *, shade_class_
     return "".join(pieces)
 
 
-__all__ = ["Segment", "heading_path_str", "render_segments_html", "segment_document", "segment_title"]
+# --------------------------------------------------------------------------- #
+# HTML wrapping -- still pure string building, no Streamlit import. The single
+# vs. dual rendering split (plan Step 9.1) is load-bearing, not cosmetic:
+# `st.markdown(unsafe_allow_html=True)` renders via `dangerouslySetInnerHTML`,
+# and browsers never execute a `<script>` injected that way, so real
+# scroll-sync between two panes is only reachable inside a real iframe
+# (`st.components.v1.html`), where injected scripts do execute.
+# --------------------------------------------------------------------------- #
+
+PANE_CSS = """
+<style>
+  body { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; margin: 0; }
+  .doc-pane { white-space: pre-wrap; word-wrap: break-word; line-height: 1.5; padding: 12px; }
+  .shade-0 { background: rgba(99, 102, 241, 0.16); }
+  .shade-1 { background: rgba(16, 185, 129, 0.16); }
+  .overlap {
+    background: repeating-linear-gradient(
+      45deg, rgba(245, 158, 11, 0.35), rgba(245, 158, 11, 0.35) 6px,
+      rgba(245, 158, 11, 0.12) 6px, rgba(245, 158, 11, 0.12) 12px
+    );
+  }
+  .gap { background: rgba(239, 68, 68, 0.12); }
+</style>
+"""
+
+
+def wrap_single_pane_html(inner_html: str) -> str:
+    """Standalone fragment for a single chunk-set view, safe to pass to
+    ``st.markdown(..., unsafe_allow_html=True)``."""
+    return f"{PANE_CSS}<div class=\"doc-pane\">{inner_html}</div>"
+
+
+def wrap_dual_pane_html(inner_html_a: str, inner_html_b: str, label_a: str, label_b: str) -> str:
+    """A full standalone HTML document -- two scroll-synced panes -- for
+    ``st.components.v1.html``. Scroll position is mirrored by *ratio*
+    (``scrollTop / (scrollHeight - clientHeight)``), not raw pixels, since the
+    two chunk sets' rendered lengths generally differ; a ``syncing`` guard
+    flag prevents the mirrored scroll event from re-triggering its own
+    listener and looping."""
+    return f"""<!doctype html>
+<html><head>{PANE_CSS}
+<style>
+  .panes {{ display: flex; gap: 8px; height: 100%; }}
+  .pane-col {{ flex: 1; min-width: 0; display: flex; flex-direction: column; }}
+  .pane-label {{ font: 600 13px ui-sans-serif, system-ui; padding: 6px 12px; opacity: 0.7; }}
+  .pane-scroll {{ overflow-y: auto; flex: 1; border: 1px solid rgba(128,128,128,0.25); }}
+</style></head>
+<body>
+<div class="panes">
+  <div class="pane-col">
+    <div class="pane-label">{html.escape(label_a)}</div>
+    <div class="pane-scroll" id="pane-a"><div class="doc-pane">{inner_html_a}</div></div>
+  </div>
+  <div class="pane-col">
+    <div class="pane-label">{html.escape(label_b)}</div>
+    <div class="pane-scroll" id="pane-b"><div class="doc-pane">{inner_html_b}</div></div>
+  </div>
+</div>
+<script>
+  const a = document.getElementById("pane-a");
+  const b = document.getElementById("pane-b");
+  let syncing = false;
+  function mirror(src, dst) {{
+    if (syncing) return;
+    syncing = true;
+    const ratio = src.scrollTop / Math.max(1, src.scrollHeight - src.clientHeight);
+    dst.scrollTop = ratio * Math.max(1, dst.scrollHeight - dst.clientHeight);
+    syncing = false;
+  }}
+  a.addEventListener("scroll", () => mirror(a, b));
+  b.addEventListener("scroll", () => mirror(b, a));
+</script>
+</body></html>"""
+
+
+__all__ = [
+    "Segment",
+    "heading_path_str",
+    "render_segments_html",
+    "segment_document",
+    "segment_title",
+    "wrap_dual_pane_html",
+    "wrap_single_pane_html",
+]
