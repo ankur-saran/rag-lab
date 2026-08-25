@@ -69,8 +69,11 @@ st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 # --------------------------------------------------------------------------- #
 
 st.subheader("Chunker × embedder heatmap")
-metric_for_heatmap = st.selectbox("Metric", metrics, index=metrics.index("recall@5") if "recall@5" in metrics else 0)
-retrievers_present = sorted({cell.retriever for cell in cells if data.result_for_cell(results, cell)})
+default_metric_idx = metrics.index("recall@5") if "recall@5" in metrics else 0
+metric_for_heatmap = st.selectbox("Metric", metrics, index=default_metric_idx)
+retrievers_present = sorted(
+    {cell.retriever for cell in cells if data.result_for_cell(results, cell)}
+)
 if retrievers_present:
     retriever_for_heatmap = st.selectbox("Retriever", retrievers_present)
     heat_rows = []

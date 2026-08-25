@@ -48,8 +48,12 @@ else:
 k = st.slider("k", min_value=1, max_value=20, value=5)
 
 retriever_names = data.list_retriever_names()
-default_selection = [n for n in ("dense", "bm25", "hybrid") if n in retriever_names] or retriever_names[:1]
-selected_retrievers = st.multiselect("Retrievers to compare", retriever_names, default=default_selection)
+default_selection = [
+    n for n in ("dense", "bm25", "hybrid") if n in retriever_names
+] or retriever_names[:1]
+selected_retrievers = st.multiselect(
+    "Retrievers to compare", retriever_names, default=default_selection
+)
 
 if not query.strip():
     st.info("Enter or pick a query to run retrieval.")
@@ -89,7 +93,7 @@ def _highlight(text: str, query: str) -> str:
 
 
 columns = st.columns(len(selected_retrievers))
-for col, name in zip(columns, selected_retrievers):
+for col, name in zip(columns, selected_retrievers, strict=True):
     with col:
         st.markdown(f"**{name}**")
         try:
@@ -107,8 +111,9 @@ for col, name in zip(columns, selected_retrievers):
             st.markdown(f"`#{r.rank}` score={r.score:.4f}{badge}")
             preview = " ".join(r.chunk.text.split())
             preview = preview if len(preview) <= 300 else preview[:299] + "…"
+            highlighted = _highlight(preview, query)
             st.markdown(
-                f'<div style="font-size:0.85em; line-height:1.4;">{_highlight(preview, query)}</div>',
+                f'<div style="font-size:0.85em; line-height:1.4;">{highlighted}</div>',
                 unsafe_allow_html=True,
             )
             if name == "hybrid" and "components" in r.debug:

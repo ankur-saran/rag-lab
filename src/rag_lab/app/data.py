@@ -17,7 +17,6 @@ only, with an empty artifacts/") true.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 import streamlit as st
 
@@ -38,7 +37,15 @@ from rag_lab.paths import (
     resolve_artifact,
 )
 from rag_lab.retrievers import available_retrievers
-from rag_lab.schemas import Chunk, Document, EvalPair, IndexManifest, OptimizerTraceEntry, QueryTrace, RunResult
+from rag_lab.schemas import (
+    Chunk,
+    Document,
+    EvalPair,
+    IndexManifest,
+    OptimizerTraceEntry,
+    QueryTrace,
+    RunResult,
+)
 
 CACHE_TTL_S = 60  # short TTL: fresh enough for a live demo without hammering disk every rerun
 
@@ -98,7 +105,8 @@ def load_chunks(chunk_set_id: str) -> tuple[list[Chunk], bool]:
     already resolves the former through ``resolve_artifact``; the latter are
     read directly since they aren't real chunk-set ids at all, just the
     fixture files' own names."""
-    if chunk_set_id in _FIXTURE_CHUNK_SET_NAMES and not (artifacts_dir() / "chunks" / f"{chunk_set_id}.jsonl").exists():
+    real_path = artifacts_dir() / "chunks" / f"{chunk_set_id}.jsonl"
+    if chunk_set_id in _FIXTURE_CHUNK_SET_NAMES and not real_path.exists():
         return read_jsonl(_fixture_chunk_set_path(chunk_set_id), Chunk), True
     chunks = load_chunk_set(chunk_set_id)
     return chunks, is_fixture(resolve_artifact("chunks", chunk_set_id))

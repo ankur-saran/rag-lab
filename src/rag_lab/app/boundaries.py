@@ -17,6 +17,7 @@ maximal runs of text covered by an unchanging set of chunks, reusing
 from __future__ import annotations
 
 import html
+import itertools
 from dataclasses import dataclass
 
 from rag_lab.schemas import Chunk
@@ -42,7 +43,8 @@ def segment_document(text_len: int, chunks: list[Chunk]) -> list[Segment]:
     across the result reconstructs ``doc.text`` exactly -- the property
     ``tests/test_phase_9.py`` checks directly for AC-2.
     """
-    ordered = sorted(chunks, key=lambda c: (c.char_start, c.char_end))  # chunks.render_chunk_boundaries's key
+    # sort key matches chunks.render_chunk_boundaries's own ordering
+    ordered = sorted(chunks, key=lambda c: (c.char_start, c.char_end))
     breakpoints: set[int] = {0, text_len}
     for c in ordered:
         breakpoints.add(max(0, min(c.char_start, text_len)))
@@ -50,7 +52,7 @@ def segment_document(text_len: int, chunks: list[Chunk]) -> list[Segment]:
     sorted_bp = sorted(breakpoints)
 
     segments: list[Segment] = []
-    for a, b in zip(sorted_bp, sorted_bp[1:]):
+    for a, b in itertools.pairwise(sorted_bp):
         if a >= b:
             continue
         covering = tuple(c for c in ordered if c.char_start <= a < c.char_end)
@@ -72,7 +74,9 @@ def segment_title(segment: Segment) -> str:
     return html.escape(" || ".join(parts)) if parts else ""
 
 
-def render_segments_html(doc_text: str, segments: list[Segment], *, shade_class_prefix: str = "shade") -> str:
+def render_segments_html(
+    doc_text: str, segments: list[Segment], *, shade_class_prefix: str = "shade"
+) -> str:
     """One escaped, alternating-shade (and overlap-hatched) `<span>` per
     segment. Text is always sliced from ``doc_text`` by offset -- never from
     any ``Chunk.text`` -- which is what makes the rendered highlight
