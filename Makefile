@@ -1,7 +1,7 @@
 PY ?= python
 PIP ?= $(PY) -m pip
 
-.PHONY: help install fixtures fixtures-index doctor test lint format clean verify-phase-0 verify-phase-1 verify-phase-2 verify-phase-3 verify-phase-4 verify-phase-6 verify-phase-7 verify-phase-8
+.PHONY: help install fixtures fixtures-index doctor test lint format clean verify-phase-0 verify-phase-1 verify-phase-2 verify-phase-3 verify-phase-4 verify-phase-6 verify-phase-7 verify-phase-8 verify-phase-9
 
 help:
 	@echo "install         install the package with core + dev extras"
@@ -18,6 +18,7 @@ help:
 	@echo "verify-phase-6  full Phase 6 acceptance run"
 	@echo "verify-phase-7  full Phase 7 acceptance run"
 	@echo "verify-phase-8  full Phase 8 acceptance run"
+	@echo "verify-phase-9  full Phase 9 acceptance run"
 
 install:
 	$(PIP) install -e ".[core,dev]"
@@ -258,3 +259,32 @@ verify-phase-8:
 	@echo "==> tests"
 	@$(PY) -m pytest tests/test_phase_0.py tests/test_phase_1.py tests/test_phase_2.py tests/test_phase_3.py tests/test_phase_4.py tests/test_phase_6.py tests/test_phase_7.py tests/test_phase_8.py -q
 	@echo "PHASE 8 OK"
+
+# Phase 9 acceptance: an AC-1/AC-3 pass first, against a genuinely empty
+# artifacts/ dir so every page is proven to boot on fixtures alone before any
+# real artifact exists (test_phase_9.py's `empty_artifacts` fixture points
+# RAG_LAB_ROOT at an isolated tmp_path -- it never touches this repo's own
+# artifacts/), then real artifacts are built -- mirroring verify-phase-6's
+# smoke-matrix run (smoke.yaml lists `contracts` too, which transparently
+# falls back to its fixture, exactly as verify-phase-6 already relies on) plus
+# verify-phase-8's `agent optimize --mock-llm`, which produces a real
+# optimizer_trace.jsonl -- to exercise every page's non-fixture path (AC-2,
+# AC-4) before the full test sweep.
+verify-phase-9:
+	@echo "==> installing (core + dev + embed + agents + app)"
+	@$(PIP) install -e ".[core,dev,embed,agents,app]" -q
+	@echo "==> checking fixture determinism (incl. sample_run cells + optimizer trace)"
+	@$(PY) scripts/build_fixtures.py --check
+	@$(PY) scripts/build_index_fixture.py --check
+	@echo "==> AC-1/AC-3: every page boots against an empty artifacts/, fixtures only"
+	@$(PY) -m pytest tests/test_phase_9.py -k "empty_artifacts" -q
+	@echo "==> building real artifacts to exercise the non-fixture paths (AC-2, AC-4)"
+	@$(PY) -m rag_lab.cli corpus build --corpus api_docs
+	@$(PY) scripts/build_api_docs_evalset.py
+	@$(PY) -m rag_lab.cli experiment run --config config/experiments/smoke.yaml --workers 2
+	@$(PY) -m rag_lab.cli agent optimize --corpus api_docs --max-iterations 3 --mock-llm
+	@echo "==> doctor"
+	@$(PY) -m rag_lab.cli doctor
+	@echo "==> tests"
+	@$(PY) -m pytest tests/test_phase_0.py tests/test_phase_1.py tests/test_phase_2.py tests/test_phase_3.py tests/test_phase_4.py tests/test_phase_6.py tests/test_phase_7.py tests/test_phase_8.py tests/test_phase_9.py -q
+	@echo "PHASE 9 OK"
