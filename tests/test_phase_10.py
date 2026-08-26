@@ -124,15 +124,17 @@ def fast_embedder(monkeypatch):
 
 @pytest.fixture
 def isolated_artifacts(monkeypatch, tmp_path):
-    """Same fixture as ``test_phase_6.py``: points every module's
-    ``artifacts_dir()`` at an empty directory, so this run's documents/chunks/
-    indexes/evalset all consistently fall back to the shared fixture bundle
-    together. Deliberately does *not* touch ``RAG_LAB_ROOT`` -- that also
-    relocates ``fixtures_dir()``, which would make the fixture fallback
-    itself unresolvable. A real subprocess (which can't see these in-process
-    monkeypatches) is instead pointed at this same ``tmp_path`` via an
-    explicit ``env=`` override at the point it's invoked, once results
-    already exist on disk -- see ``test_print_demo_winner_cli_...`` below."""
+    """Points every module's ``artifacts_dir()`` at an empty ``<tmp_path>/
+    artifacts`` directory -- the ``/artifacts`` suffix (unlike
+    ``test_phase_6.py``'s own fixture, which patches ``artifacts_dir()`` to
+    return ``tmp_path`` directly) is what lets a real subprocess, which can't
+    see these in-process monkeypatches, land on the exact same directory by
+    being given ``RAG_LAB_ROOT=str(tmp_path)`` alone: its unpatched
+    ``artifacts_dir()`` computes ``repo_root() / "artifacts"`` the normal way.
+    Deliberately does not set ``RAG_LAB_ROOT`` here, only ``artifacts_dir`` --
+    the former also relocates ``fixtures_dir()``, which would make the
+    fixture-fallback this run depends on unresolvable."""
+    artifacts = tmp_path / "artifacts"
     for target in (
         "rag_lab.paths.artifacts_dir",
         "rag_lab.corpus.artifacts_dir",
@@ -140,7 +142,7 @@ def isolated_artifacts(monkeypatch, tmp_path):
         "rag_lab.indexing.artifacts_dir",
         "rag_lab.experiment.runner.artifacts_dir",
     ):
-        monkeypatch.setattr(target, lambda p=tmp_path: p)
+        monkeypatch.setattr(target, lambda p=artifacts: p)
     return tmp_path
 
 
