@@ -183,8 +183,9 @@ def test_print_demo_winner_cli_names_the_higher_recall_cell(fast_embedder, isola
 
 
 def test_print_demo_winner_cli_unknown_run_id_errors():
+    script = REPO_ROOT / "scripts" / "print_demo_winner.py"
     proc = subprocess.run(
-        [sys.executable, str(REPO_ROOT / "scripts" / "print_demo_winner.py"), "--run-id", "no-such-run"],
+        [sys.executable, str(script), "--run-id", "no-such-run"],
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
