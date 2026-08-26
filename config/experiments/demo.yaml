@@ -1,0 +1,21 @@
+# Phase 10 demo matrix (Step 10.1): api_docs only, fixed vs markdown, one
+# embedder, one retriever. Deliberately narrower than smoke.yaml (which also
+# runs `contracts`) so `make demo`'s output stays focused on the corpus Step
+# 10.1 describes. Chunker params match smoke.yaml's so a prior
+# `make verify-phase-6` run's cached chunk sets/indexes are reused, not
+# rebuilt.
+name: demo
+_nohash: [description]
+description: Bundled two-cell comparison used by `make demo` and `make verify-phase-10`.
+corpora: [api_docs]
+seed: 42
+k: 10
+matrix:
+  chunker:
+    - {name: fixed, params: {chunk_tokens: 512, overlap_tokens: 64}}
+    - {name: markdown, params: {max_tokens: 768, prepend_heading_path: true}}
+  embedder:
+    - {name: bge-small, params: {}}
+  retriever:
+    - {name: dense, params: {}}
+exclude: []

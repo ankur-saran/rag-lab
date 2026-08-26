@@ -1,7 +1,7 @@
 PY ?= python
 PIP ?= $(PY) -m pip
 
-.PHONY: help install fixtures fixtures-index doctor test lint format clean verify-phase-0 verify-phase-1 verify-phase-2 verify-phase-3 verify-phase-4 verify-phase-6 verify-phase-7 verify-phase-8 verify-phase-9
+.PHONY: help install fixtures fixtures-index doctor test lint format clean demo demo-build verify-phase-0 verify-phase-1 verify-phase-2 verify-phase-3 verify-phase-4 verify-phase-6 verify-phase-7 verify-phase-8 verify-phase-9 verify-phase-10
 
 help:
 	@echo "install         install the package with core + dev extras"
@@ -10,6 +10,7 @@ help:
 	@echo "doctor          run the environment health check"
 	@echo "test            run the test suite"
 	@echo "lint            ruff check"
+	@echo "demo            build api_docs, run the demo matrix, launch the viewer (<5 min, no API key)"
 	@echo "verify-phase-0  full Phase 0 acceptance run"
 	@echo "verify-phase-1  full Phase 1 acceptance run"
 	@echo "verify-phase-2  full Phase 2 acceptance run"
@@ -19,6 +20,7 @@ help:
 	@echo "verify-phase-7  full Phase 7 acceptance run"
 	@echo "verify-phase-8  full Phase 8 acceptance run"
 	@echo "verify-phase-9  full Phase 9 acceptance run"
+	@echo "verify-phase-10 full Phase 10 acceptance run"
 
 install:
 	$(PIP) install -e ".[core,dev]"
@@ -288,3 +290,54 @@ verify-phase-9:
 	@echo "==> tests"
 	@$(PY) -m pytest tests/test_phase_0.py tests/test_phase_1.py tests/test_phase_2.py tests/test_phase_3.py tests/test_phase_4.py tests/test_phase_6.py tests/test_phase_7.py tests/test_phase_8.py tests/test_phase_9.py -q
 	@echo "PHASE 9 OK"
+
+# Phase 10 shared pipeline (Step 10.1): build api_docs, generate its bundled
+# eval set (deterministic, no API key -- see README's "Two things worth
+# knowing" for why this substitutes for a committed fixtures/evalset/
+# api_docs.jsonl), chunk fixed vs markdown, index both with BGE-small, run
+# the two-cell demo matrix, print the comparison table and the winning cell.
+# Shared by `demo` (interactive) and `verify-phase-10` (CI) so neither drifts.
+demo-build:
+	@echo "==> building the api_docs corpus"
+	@$(PY) -m rag_lab.cli corpus build --corpus api_docs
+	@echo "==> generating the bundled api_docs eval set (deterministic, no API key)"
+	@$(PY) scripts/build_api_docs_evalset.py
+	@echo "==> chunking api_docs (fixed vs markdown) and indexing both with BGE-small"
+	@FIXED_CS=$$($(PY) -m rag_lab.cli chunk run --corpus api_docs --chunker fixed --params chunk_tokens=512 --params overlap_tokens=64 | grep -oE 'api_docs__fixed__[a-f0-9]+'); \
+	MARKDOWN_CS=$$($(PY) -m rag_lab.cli chunk run --corpus api_docs --chunker markdown --params max_tokens=768 --params prepend_heading_path=true | grep -oE 'api_docs__markdown__[a-f0-9]+'); \
+	$(PY) -m rag_lab.cli index build --chunk-set $$FIXED_CS --embedder bge-small; \
+	$(PY) -m rag_lab.cli index build --chunk-set $$MARKDOWN_CS --embedder bge-small; \
+	echo "==> running the demo matrix"; \
+	RUN_ID=$$($(PY) -m rag_lab.cli experiment run --config config/experiments/demo.yaml --workers 2 | grep -oE 'demo__[0-9TZ]+' | tail -1); \
+	echo "==> comparison table"; \
+	$(PY) -m rag_lab.cli experiment report --run-id $$RUN_ID; \
+	echo "==> winning configuration"; \
+	$(PY) scripts/print_demo_winner.py --run-id $$RUN_ID
+
+# make demo: the ten-minute path. Installs the minimal extras a user (not a
+# contributor) needs -- no `dev` -- runs the shared pipeline above, then
+# blocks on the Streamlit viewer. Ctrl+C to stop.
+demo:
+	@echo "==> installing (core + embed + app)"
+	@$(PIP) install -e ".[core,embed,app]" -q
+	@$(MAKE) demo-build
+	@echo "==> launching the viewer -- Ctrl+C to stop; open 'Results dashboard' in the sidebar"
+	@$(PY) -m streamlit run src/rag_lab/app/Home.py
+
+# Phase 10 acceptance: the same pipeline `demo` runs, minus the blocking
+# viewer, plus fixture-determinism checks and the cumulative test suite --
+# matching every other verify-phase-N target's shape.
+verify-phase-10:
+	@echo "==> installing (core + dev + embed + app)"
+	@$(PIP) install -e ".[core,dev,embed,app]" -q
+	@echo "==> checking fixture determinism (core + index + parent/child fixtures)"
+	@$(PY) scripts/build_fixtures.py --check
+	@$(PY) scripts/build_index_fixture.py --check
+	@$(MAKE) demo-build
+	@echo "==> checking the api_docs eval set is deterministic"
+	@$(PY) scripts/build_api_docs_evalset.py --check
+	@echo "==> doctor"
+	@$(PY) -m rag_lab.cli doctor
+	@echo "==> tests"
+	@$(PY) -m pytest tests/test_phase_0.py tests/test_phase_1.py tests/test_phase_2.py tests/test_phase_3.py tests/test_phase_4.py tests/test_phase_6.py tests/test_phase_7.py tests/test_phase_8.py tests/test_phase_9.py tests/test_phase_10.py -q
+	@echo "PHASE 10 OK"
