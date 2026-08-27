@@ -3,33 +3,45 @@
 A framework for showcasing chunking and embedding strategies, with an agentic
 optimization layer.
 
-**Status: Phase 7 complete (Phase 5 still stubbed).** The skeleton, artifact
-schemas, config system, CLI surface and health check are in place (Phase 0).
-Five corpora — `api_docs`, `contracts`, `filings`, `transcripts`, `catalog` —
-are curated and load cleanly into normalized `Document` artifacts, with stats
-showing each corpus exhibits the property it was chosen to stress (Phase 1).
-Four baseline chunkers — `fixed`, `recursive`, `markdown`, `sentence_window` —
-turn those documents into valid `Chunk` streams, with `chunk stats`/`show`/
-`diff` to inspect what each one did; on `api_docs`, `markdown` never splits a
-fenced code block while `fixed` routinely does (Phase 2). Four embedders
-behind a common asymmetric query/document protocol build persistent, cached
-Chroma indexes (Phase 3). Five retrievers — `dense`, `bm25`, `hybrid` (RRF),
-`parent_doc`, `sentence_window` — run and compare against those indexes, with
-BM25 beating dense on exact-identifier queries (Phase 4). The evaluation
-harness expands a chunker x embedder x retriever experiment matrix, resolves
-gold labels from document-offset spans per chunk set, and reports recall/MRR/
+**Status: Phases 0–9 complete.** The one remaining stub is Phase 5's
+LLM-based eval-set *generator* (`evalset build/validate/stats/review`) —
+Phase 6 onward uses a hand-authored substitute
+(`scripts/build_api_docs_evalset.py`) in its place; see "Four things worth
+knowing" below. `make demo` is the fastest way to see all of it work
+together end to end.
+
+The skeleton, artifact schemas, config system, CLI surface and health check
+are in place (Phase 0). Five corpora — `api_docs`, `contracts`, `filings`,
+`transcripts`, `catalog` — are curated and load cleanly into normalized
+`Document` artifacts, with stats showing each corpus exhibits the property
+it was chosen to stress (Phase 1). Four baseline chunkers — `fixed`,
+`recursive`, `markdown`, `sentence_window` — turn those documents into valid
+`Chunk` streams, with `chunk stats`/`show`/`diff` to inspect what each one
+did; on `api_docs`, `markdown` never splits a fenced code block while
+`fixed` routinely does (Phase 2). Four embedders behind a common asymmetric
+query/document protocol build persistent, cached Chroma indexes (Phase 3).
+Five retrievers — `dense`, `bm25`, `hybrid` (RRF), `parent_doc`,
+`sentence_window` — run and compare against those indexes, with BM25
+beating dense on exact-identifier queries (Phase 4). The evaluation harness
+expands a chunker x embedder x retriever experiment matrix, resolves gold
+labels from document-offset spans per chunk set, and reports recall/MRR/
 nDCG with bootstrap confidence intervals — `markdown` beats `fixed` on real
-`api_docs` recall@5 outside the CI (Phase 6). Phase 5 (the LLM-based eval-set
-generator) is still a stub; Phase 6 uses a hand-authored eval set in its
-place (`scripts/build_api_docs_evalset.py`) — see "Two things worth knowing"
-below. Two advanced chunkers round out the registry: `semantic` cuts on
-embedding-distance breakpoints between sentences (expected to lose on
-structured `api_docs` and win on headingless `transcripts` — both results are
-shown, not just the win) and `table_summary` pulls GFM tables out of `filings`
-into their own chunk with an LLM-generated summary in `embed_text`, raw table
-in `text`, cached by table content and mockable with `--mock-llm` for
-credential-free testing (Phase 7). Every later phase's subcommands are
-registered and stubbed, so `rag-lab --help` is an accurate map of the system.
+`api_docs` recall@5 outside the CI at a small enough window, and ties on
+recall@5 while returning 3.4x fewer tokens per correct answer at the demo's
+default window (Phase 6; see `docs/findings.md`). Two advanced chunkers
+round out the registry: `semantic` cuts on embedding-distance breakpoints
+between sentences (measured 55x more expensive to build on code-punctuated
+`api_docs` than on `transcripts`, for a comparable document count — both
+results are shown, not just the win) and `table_summary` pulls GFM tables
+out of `filings` into their own chunk with an LLM-generated summary in
+`embed_text`, raw table in `text`, cached by table content and mockable with
+`--mock-llm` for credential-free testing (Phase 7). Two agents — a router
+that picks a retrieval strategy per query and justifies it, and an optimizer
+that iterates chunker/embedder/retriever proposals against a held-out dev
+split before reporting once on test — are both runnable credential-free via
+`--mock-llm` (Phase 8). A four-page Streamlit explorer — chunk boundaries,
+retrieval comparison, results dashboard, optimizer trace — degrades to the
+committed fixtures whenever `artifacts/` is empty (Phase 9).
 
 ---
 
@@ -61,6 +73,20 @@ make verify-phase-6                      # full Phase 6 acceptance run
 rag-lab chunk run --corpus transcripts --chunker semantic       # needs .[embed]
 rag-lab chunk run --corpus filings --chunker table_summary --mock-llm  # no API key needed
 make verify-phase-7                      # full Phase 7 acceptance run
+
+python -m pip install -e ".[core,dev,embed,agents]"   # adds anthropic
+rag-lab agent route --query "..." --corpus api_docs --mock-llm --explain
+rag-lab agent optimize --corpus api_docs --max-iterations 6 --mock-llm
+rag-lab agent trace --run-id <id>
+make verify-phase-8                      # full Phase 8 acceptance run
+
+python -m pip install -e ".[core,dev,embed,agents,app]"   # adds streamlit, plotly
+streamlit run src/rag_lab/app/Home.py    # chunk boundaries, retrieval comparison, results, optimizer trace
+make verify-phase-9                      # full Phase 9 acceptance run
+
+make demo                                # the ten-minute path: builds api_docs, runs the
+                                          # demo matrix, launches the viewer -- <5 min, no API key
+make verify-phase-10                     # full Phase 10 acceptance run
 ```
 
 `core` is deliberately light — no PyTorch, no ChromaDB. Phases 1, 2 and 5
@@ -68,6 +94,40 @@ make verify-phase-7                      # full Phase 7 acceptance run
 `--mock-llm`. Install `.[embed]` for Phases 3, 4, 6 and `semantic`. Install
 `.[agents]` (or set `ANTHROPIC_API_KEY`) for `table_summary` without
 `--mock-llm`.
+
+## Results
+
+`fixed` vs `markdown` on `api_docs` (`bge-small`, `dense`, `k=10`, the real
+30-pair hand-authored eval set) — reproduce with `make demo`, run_id
+`demo__20260826T030253Z`:
+
+| chunker | recall@5 | recall@10 | mrr | ndcg@10 | chunk_efficiency |
+|---|---|---|---|---|---|
+| `fixed` | 1.000 [1.000, 1.000] | 1.000 [1.000, 1.000] | 0.917 [0.850, 0.983] | 0.938 [0.889, 0.988] | 3321.0 |
+| `markdown` | 1.000 [1.000, 1.000] | 1.000 [1.000, 1.000] | 0.928 [0.856, 0.983] | 0.938 [0.884, 0.984] | **980.5** |
+
+Recall@5/@10 tie (the eval set saturates both at this corpus size);
+`markdown` returns **3.4x fewer tokens per correct answer**. Full table,
+the fence-splitting punchline, the `semantic`/`table_summary` cost numbers,
+and the honest limitations behind all of it: [`docs/findings.md`](docs/findings.md).
+
+## Architecture
+
+```mermaid
+flowchart LR
+    corpora["corpora/*.md"] --> loaders --> Document
+    Document --> chunkers --> Chunk
+    Chunk --> embedders --> index[("Chroma index")]
+    evalset["eval set"] -.-> retrievers
+    index --> retrievers --> RunResult
+    RunResult --> report["experiment report"]
+    RunResult --> app["Streamlit viewer"]
+    RunResult --> agents["router / optimizer"]
+```
+
+Every arrow is an on-disk artifact with a frozen schema (`src/rag_lab/schemas.py`)
+— no phase imports another phase's runtime state. See "The independence
+contract" below.
 
 ## The independence contract
 
@@ -93,10 +153,12 @@ plausible-looking, meaningless numbers.
 config/          default.yaml + experiment matrices
 corpora/         5 curated corpora (Phase 1) — api_docs, contracts, filings,
                  transcripts, catalog, each with a SOURCE.md
+docs/            strategies.md, adding_a_chunker.md, findings.md, demo_script.md
 fixtures/        committed sample artifacts — the independence contract
   raw/           source markdown the fixtures are generated from
 artifacts/       generated output (gitignored)
-scripts/         build_fixtures.py, build_index_fixture.py, build_api_docs_evalset.py
+scripts/         build_fixtures.py, build_index_fixture.py,
+                 build_api_docs_evalset.py, print_demo_winner.py
 src/rag_lab/
   schemas.py     frozen artifact models — the interface contract
   ids.py         deterministic IDs
@@ -125,12 +187,14 @@ src/rag_lab/
                  depends on; generation/validation still stubbed
   metrics/       recall/MRR/nDCG, gold resolution, bootstrap CI (Phase 6)
   experiment/    matrix config + expansion, the runner, reporting (Phase 6)
+  agents/        tool-use loop, router, optimizer (Phase 8)
+  app/           Streamlit explorer -- Home.py + pages/ (Phase 9)
   doctor.py      environment health check
   cli.py         Typer app, one sub-app per phase
 tests/           one test module per phase
 ```
 
-## Three things worth knowing before extending this
+## Four things worth knowing before extending this
 
 **`Chunk.text` vs `Chunk.embed_text`.** One field is returned to the consumer,
 the other is embedded. Heading-path prefixing, asymmetric query/document
@@ -171,6 +235,19 @@ it in (default `False`, like any other chunker param) is what stops a real
 cached mock output as a legitimate cache hit. The tell: if two configs can
 produce different bytes on disk, they need different IDs — the same rule
 `role`/`parent_chunk_set_id` follow (§4.7).
+
+**`make demo` regenerates the `api_docs` eval set at demo-time rather than
+shipping a second, committed copy under `fixtures/evalset/`.** The plan's
+Step 10.1 literally describes "shipping a pre-generated eval set... in
+`fixtures/evalset/`" — `make demo` instead runs
+`scripts/build_api_docs_evalset.py` (the same script `verify-phase-6/8/9`
+already use), which needs no network, no API key, and under a second to
+regenerate deterministically from the already-committed `corpora/api_docs/`
+source files. A hand-copied `fixtures/evalset/api_docs.jsonl` would drift
+the moment a corpus document or a seed changed, and that drift fails
+*silently* (every pair excluded, logged as `cell_fully_excluded`) rather
+than loudly — worse than the literal spec text being technically unmet. See
+`docs/findings.md` §5 for the related limitation this substitute carries.
 
 ## Caching
 
@@ -217,9 +294,18 @@ rag-lab experiment failures --run-id <id> --config-idx 0 --n 20     # worst quer
 rag-lab chunk run --corpus transcripts --chunker semantic
 rag-lab chunk run --corpus filings --chunker table_summary                 # real LLM calls
 rag-lab chunk run --corpus filings --chunker table_summary --mock-llm      # no API key needed
+
+rag-lab agent route --query "..." --corpus api_docs --explain              # real LLM call
+rag-lab agent route --query "..." --corpus api_docs --mock-llm --explain   # no API key needed
+rag-lab agent optimize --corpus api_docs --max-iterations 6 --budget-usd 5 --mock-llm
+rag-lab agent trace --run-id <id>
+
+streamlit run src/rag_lab/app/Home.py   # chunk boundaries, retrieval comparison, results, optimizer trace
 ```
 
-Remaining stubs (Phase 5, 8, 9, 10) exit 1 and name the phase that will implement them.
+The one remaining stub is Phase 5's `evalset build/validate/stats/review`
+(it exits 1 and names itself) — see `scripts/build_api_docs_evalset.py` for
+its working substitute.
 
 ## Requirements
 

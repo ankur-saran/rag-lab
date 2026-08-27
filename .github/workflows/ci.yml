@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    # Single job, single OS, single Python version: the Makefile's `grep -oE`
+    # recipes need bash + make, and a per-phase or per-OS matrix would
+    # multiply install/model-download cost well past the 5-minute budget
+    # (Phase 10, Step 10.3) for no coverage benefit -- every verify-phase-N
+    # target already runs on fixtures/hand-authored data only, with
+    # --mock-llm baked into the Makefile itself wherever a real LLM call
+    # would otherwise be needed (Phase 7's table_summary chunk run, Phase
+    # 8/9's agent route/optimize). No repository secrets are referenced
+    # anywhere in this workflow.
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      # sentence-transformers/chromadb/torch is the one nontrivial download
+      # in this pipeline (a few hundred MB even CPU-only). Caching the model
+      # + tokenizer stores keeps every run after the first well under budget.
+      - name: Cache HuggingFace + tiktoken downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/huggingface
+            ~/.cache/tiktoken
+          key: rag-lab-models-${{ runner.os }}-bge-small-minilm-cl100k-v1
+
+      - name: Pre-install CPU-only torch
+        run: pip install torch --index-url https://download.pytorch.org/whl/cpu -q
+
+      - name: verify-phase-0 through verify-phase-10
+        run: |
+          make verify-phase-0
+          make verify-phase-1
+          make verify-phase-2
+          make verify-phase-3
+          make verify-phase-4
+          make verify-phase-6
+          make verify-phase-7
+          make verify-phase-8
+          make verify-phase-9
+          make verify-phase-10
